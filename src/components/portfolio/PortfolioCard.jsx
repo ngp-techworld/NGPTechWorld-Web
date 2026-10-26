@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang } from '../../i18n/LanguageContext'
 import { useSpotlight } from '../../lib/useSpotlight'
@@ -16,7 +17,7 @@ const MAX_CHIPS = 4
  * The title is the card's only link to the detail page, stretched over the whole card by CSS. That
  * keeps the demo button a real, separate link: an <a> wrapped around the card could not contain it.
  */
-export default function PortfolioCard({ project, headingLevel = 3 }) {
+function PortfolioCard({ project, headingLevel = 3 }) {
   const { t, pick, contentLang } = useLang()
   const spot = useSpotlight()
   const H = `h${headingLevel}`
@@ -75,3 +76,7 @@ export default function PortfolioCard({ project, headingLevel = 3 }) {
     </article>
   )
 }
+
+// Memoised: the list re-renders when the facets, the featured strip or another page arrive, and the
+// cards already on screen are the same objects every time.
+export default memo(PortfolioCard)

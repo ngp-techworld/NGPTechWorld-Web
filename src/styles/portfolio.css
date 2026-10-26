@@ -281,7 +281,6 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
   outline: none;
 }
 .pf-select:focus-visible { border-color: var(--line-brand); box-shadow: 0 0 0 3px var(--brand-glow) }
-.pf-select[data-active='true'] { border-color: var(--line-brand); background: var(--surface-3) }
 
 .pf-toolbar__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 18px }
 .pf-count { font-size: 14px; color: var(--text-muted) }
@@ -394,7 +393,6 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 }
 [dir='rtl'] .pf-detail-hero__title { letter-spacing: 0; line-height: 1.22 }
 .pf-detail-hero__lead { margin-top: 16px; max-width: 60ch; font-size: clamp(16px, 2vw, 19px); line-height: 1.75; color: var(--text-muted) }
-.pf-detail-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px }
 
 /* The spec rail: what a buyer asks first, as a definition list. A cell with nothing in it is not
    rendered at all, so a missing client or year leaves no empty label or stray separator behind.
@@ -475,7 +473,6 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 .pf-group:last-child { border-bottom: 1px solid var(--line-soft) }
 @media (min-width: 900px) { .pf-group { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) } }
 .pf-group__name { font-size: 17px; font-weight: 650; color: var(--text-strong) }
-.pf-group__desc { margin-top: 6px; font-size: 13.5px; line-height: 1.65; color: var(--text-faint) }
 .pf-features { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; list-style: none }
 @media (min-width: 640px) { .pf-features { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
 .pf-feature { display: flex; gap: 12px }

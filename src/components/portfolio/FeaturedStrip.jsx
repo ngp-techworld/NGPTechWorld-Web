@@ -41,10 +41,11 @@ export default function FeaturedStrip({ projects }) {
       </div>
 
       <div ref={track} className="pf-strip__track">
-        {projects.map((p) => (
+        {projects.map((p, i) => (
           <Link key={p.id} to={`/portfolio/${p.slug}`} className="pf-feature-card pf-focus">
             <div className="pf-feature-card__media">
-              <ProjectCover project={p} height="100%" />
+              {/* The first two are in view as the page opens, so they are not left to lazy loading. */}
+              <ProjectCover project={p} height="100%" eager={i < 2} />
             </div>
             <div className="pf-feature-card__scrim" />
             <div className="pf-feature-card__body">
