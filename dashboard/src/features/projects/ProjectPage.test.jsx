@@ -1,0 +1,311 @@
+import './testTimeouts'
+import { screen, waitFor, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
+import { renderWithProviders, testUser } from '@/test/renderWithProviders'
+import ProjectEdit from './ProjectEdit'
+import { ABILITIES, legacyProject, registryRoutes } from './registryTestUtils'
+
+const path = '/projects/:id'
+const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent.replace(/\d+$/, '').trim())
+const tablist = (name) => screen.getByRole('tablist', { name: new RegExp(`^${name}`) })
+const region = (name) => within(screen.getByRole('region', { name }))
+const findRegion = async (name) => within(await screen.findByRole('region', { name }))
+const saveDetails = () => within(screen.getByRole('form', { name: 'Project details' })).getByRole('button', { name: 'Save' })
+const manager = { ...testUser, is_super_admin: false, role: 'admin', permissions: [], registry_role: 'manager' }
+
+function renderPage({ abilities = ABILITIES.superAdmin, route = '/projects/7', authUser = testUser, over, extra, lang } = {}) {
+  const api = mockApi(registryRoutes({ abilities, over, extra }))
+  const view = renderWithProviders(<ProjectEdit />, { route, path, authUser, lang })
+  return { api, ...view }
+}
+
+const PUBLIC = ['Overview', 'Media', 'Features', 'Tech stack', 'Screenshots', 'Team', 'Links']
+const INTERNAL = ['Non-functional', 'Maintenance', 'Documents']
+const SENSITIVE = ['Accounts & permissions', 'Environments & servers', 'Deployment', 'Database & backups']
+
+describe('project page: tabs by abilities', () => {
+  it('shows every tab, in three groups, to a caller with every ability', async () => {
+    renderPage()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })).toBeInTheDocument()
+
+    expect(tabNames()).toEqual([...PUBLIC, ...INTERNAL, ...SENSITIVE])
+    expect(within(tablist('Public content')).getAllByRole('tab')).toHaveLength(7)
+    expect(within(tablist('Internal')).getAllByRole('tab')).toHaveLength(3)
+    expect(within(tablist('Sensitive')).getAllByRole('tab')).toHaveLength(4)
+  })
+
+  it('leaves the sensitive tabs out (not disabled) for a viewer who is not a member', async () => {
+    renderPage({ abilities: ABILITIES.viewer })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(tabNames()).toEqual([...PUBLIC, ...INTERNAL])
+    expect(screen.queryByRole('tablist', { name: /^Sensitive/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /Accounts/ })).not.toBeInTheDocument()
+  })
+
+  it('gives a projects-section content editor the public tabs only', async () => {
+    renderPage({ abilities: ABILITIES.contentEditor })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(tabNames()).toEqual(PUBLIC)
+    expect(screen.queryByRole('region', { name: 'Administration' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Project members' })).not.toBeInTheDocument()
+  })
+
+  it('opens a tab from ?tab= and falls back to the Overview for a tab the caller cannot read', async () => {
+    renderPage({ abilities: ABILITIES.viewer, route: '/projects/7?tab=accounts' })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+    expect(screen.getByRole('tab', { name: /^Overview/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('keeps the tab in the URL', async () => {
+    const { user } = renderPage()
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    await user.click(screen.getByRole('tab', { name: 'Deployment' }))
+    expect(screen.getByTestId('location')).toHaveTextContent('/projects/7?tab=deployment')
+    expect(await screen.findByRole('region', { name: 'Repositories' })).toBeInTheDocument()
+  })
+
+  it('falls back to the original public tabs, with a notice, when the registry cannot be read', async () => {
+    mockApi({ 'GET /projects/:id': () => ({ data: legacyProject() }), 'GET /registry/projects/:id': () => reply(404, { message: 'Not found.' }) })
+    renderWithProviders(<ProjectEdit />, { route: '/projects/7', path })
+
+    expect(await screen.findByText(/The project registry could not be loaded/)).toBeInTheDocument()
+    expect(tabNames()).toEqual(['Overview', 'Media', 'Team', 'Links'])
+    expect(screen.getByRole('switch', { name: /Featured project/ })).toBeInTheDocument()
+  })
+
+  it('names the groups and tabs in Arabic', async () => {
+    renderPage({ lang: 'ar' })
+    expect(await screen.findByRole('heading', { level: 1, name: 'بوابة أكمي' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: /^المحتوى العام/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'الحسابات والصلاحيات' })).toBeInTheDocument()
+  })
+})
+
+describe('project page: write controls follow the abilities', () => {
+  it('shows the Overview read-only to a viewer: disabled fields, no Save, no add buttons', async () => {
+    const { user } = renderPage({ abilities: ABILITIES.viewer })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(screen.getByText('Read only: you cannot change this project’s content.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Client/)).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(region('Administration').getByLabelText('Owner')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Features' }))
+    expect(await screen.findByText('No modules yet')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add module' })).not.toBeInTheDocument()
+  })
+
+  it('lets a developer member edit the sensitive groups', async () => {
+    const { user } = renderPage({ abilities: ABILITIES.developerMember, authUser: { ...manager, registry_role: 'developer' } })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    await user.click(screen.getByRole('tab', { name: 'Accounts & permissions' }))
+    expect((await findRegion('Authentication and permissions')).getByLabelText('Authentication method')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add account' })).toBeInTheDocument()
+  })
+})
+
+describe('project page: Overview', () => {
+  it('sends the new public fields with the original endpoint, only what changed', async () => {
+    const { api, user } = renderPage({
+      extra: { 'PUT /projects/:id': ({ body }) => ({ data: { ...legacyProject(), ...body } }) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(screen.queryByLabelText(/^Status/)).not.toBeInTheDocument() // replaced by the development status
+    expect(screen.queryByRole('switch', { name: /Featured project/ })).not.toBeInTheDocument() // in the Publication card
+    await user.selectOptions(screen.getByLabelText(/^Development status/), 'maintenance')
+    await user.selectOptions(screen.getByLabelText(/^Industry/), '3')
+    await user.click(screen.getByRole('checkbox', { name: 'Android' }))
+    await user.type(screen.getByLabelText('Business problem (English)'), 'Orders by phone')
+    await user.click(screen.getByRole('button', { name: 'Add Highlight' }))
+    const item = within(screen.getAllByRole('listitem', { name: 'Highlight 1' })[0])
+    await user.type(item.getByLabelText(/^Arabic/), 'طلبات أسرع')
+    await user.type(item.getByLabelText(/^English/), 'Faster orders')
+    await user.click(saveDetails())
+
+    await waitFor(() => expect(api.calls('PUT', '/projects/7')).toHaveLength(1))
+    expect(api.calls('PUT', '/projects/7')[0].body).toEqual({
+      development_status: 'maintenance',
+      industry_id: 3,
+      platforms: ['android'],
+      business_problem_en: 'Orders by phone',
+      highlights: [{ ar: 'طلبات أسرع', en: 'Faster orders' }],
+    })
+    // completeness may have moved: the registry record is read again
+    await waitFor(() => expect(api.calls('GET', '/registry/projects/7').length).toBeGreaterThan(1))
+  })
+
+  it('maps a 422 on a non-functional highlight onto its row', async () => {
+    const { user } = renderPage({
+      over: { nonfunctional_highlights: [{ key: 'security', title: { ar: 'أمان', en: 'Security' }, description: { ar: null, en: null } }] },
+      extra: { 'PUT /projects/:id': () => validationError({ 'nonfunctional_highlights.0.title.en': ['The title is too long.'] }) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    const row = within(screen.getByRole('listitem', { name: 'Item 1' }))
+    await user.type(row.getByLabelText(/^Title \(English\)/), '!')
+    await user.click(saveDetails())
+
+    expect(await row.findByText('The title is too long.')).toBeInTheDocument()
+  })
+
+  it('lets an imported project without client or year be saved', async () => {
+    const { api, user } = renderPage({
+      over: { client: null, year: null },
+      extra: { 'PUT /projects/:id': ({ body }) => ({ data: { ...legacyProject({ client: null, year: null }), ...body } }) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(screen.getByLabelText(/^Client/)).toHaveValue('')
+    await user.type(screen.getByLabelText('Solution (English)'), 'Online ordering')
+    await user.click(saveDetails())
+
+    await waitFor(() => expect(api.calls('PUT', '/projects/7')).toHaveLength(1))
+    expect(api.calls('PUT', '/projects/7')[0].body).toEqual({ solution_en: 'Online ordering' })
+  })
+
+  it('edits the administration group with only the changed field', async () => {
+    const { api, user } = renderPage({
+      extra: { 'PUT /registry/projects/:id/operations/:group': ({ body }) => ({ data: { group: 'administration', values: { owner_name: 'Layla', ...body } } }) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    expect(region('Administration').getByLabelText('Owner')).toHaveValue('Layla')
+    await user.type(region('Administration').getByLabelText('Technical lead'), 'Sara')
+    await user.click(region('Administration').getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('PUT', '/registry/projects/7/operations/administration')).toHaveLength(1))
+    expect(api.calls('PUT', '/registry/projects/7/operations/administration')[0].body).toEqual({ technical_lead_name: 'Sara' })
+  })
+})
+
+describe('project page: members', () => {
+  const members = [{ id: 1, project_id: 7, user_id: 5, member_role: 'owner', responsibilities: null, user: { id: 5, name: 'Layla', email: 'layla@ngptechworld.com', registry_role: 'manager' } }]
+  const accounts = [
+    { id: 5, name: 'Layla', email: 'layla@ngptechworld.com', registry_role: 'manager' },
+    { id: 6, name: 'Omar', email: 'omar@ngptechworld.com', registry_role: 'developer' },
+    { id: 8, name: 'Huda', email: 'huda@ngptechworld.com', registry_role: null },
+  ]
+
+  it('lets a super admin add an account that has a registry role and is not a member yet', async () => {
+    const { api, user } = renderPage({
+      extra: {
+        'GET /registry/projects/:id/members': () => paginated(members),
+        'GET /users': () => paginated(accounts),
+        'POST /registry/projects/:id/members': ({ body }) => reply(201, { data: { id: 2, project_id: 7, ...body, user: accounts[1] } }),
+      },
+    })
+    expect(await (await findRegion('Project members')).findByText('layla@ngptechworld.com')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add member' }))
+    const dialog = within(screen.getByRole('dialog'))
+    const options = [...dialog.getByLabelText(/^Account/).options].map((option) => option.textContent)
+    expect(options).toEqual(['Choose…', 'Omar · omar@ngptechworld.com · Developer'])
+    await user.selectOptions(dialog.getByLabelText(/^Account/), '6')
+    await user.selectOptions(dialog.getByLabelText('Role on the project'), 'tech_lead')
+    await user.click(dialog.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('POST', '/registry/projects/7/members')).toHaveLength(1))
+    expect(api.calls('POST', '/registry/projects/7/members')[0].body).toEqual({ user_id: 6, member_role: 'tech_lead', responsibilities: null })
+  })
+
+  it('tells a manager who is not a super admin why there is no add button, but lets them change roles', async () => {
+    const { api } = renderPage({ abilities: ABILITIES.managerMember, authUser: manager, extra: { 'GET /registry/projects/:id/members': () => paginated(members) } })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    expect(screen.getByText(/Adding a new member is currently for super admins only/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument()
+    expect(region('Project members').getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(api.calls('GET', '/users')).toHaveLength(0) // super-admin-only endpoint, never called
+  })
+
+  it('shows the list without any change control to a viewer', async () => {
+    renderPage({ abilities: ABILITIES.viewer, authUser: { ...manager, registry_role: 'viewer' }, extra: { 'GET /registry/projects/:id/members': () => paginated(members) } })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+    expect(region('Project members').queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Adding a new member/)).not.toBeInTheDocument()
+  })
+})
+
+describe('project page: registry tabs', () => {
+  it('marks an endpoint verified with a PUT and shows who confirmed it', async () => {
+    let endpoint = { id: 4, url: 'https://acme.example/api', kind: 'api', environment: 'production', verification_status: 'unverified', verified_by: null, last_verified_at: null, purpose: null }
+    const { api, user } = renderPage({
+      route: '/projects/7?tab=environments',
+      extra: {
+        'GET /registry/projects/:id/endpoints': () => paginated([endpoint]),
+        'PUT /registry/projects/:id/endpoints/:item': ({ body }) => {
+          // the server signs the confirmation itself
+          endpoint = { ...endpoint, ...body, verified_by: 1, last_verified_at: '2026-10-26T09:00:00.000000Z' }
+          return { data: endpoint }
+        },
+      },
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Mark https://acme.example/api verified' }))
+    await waitFor(() => expect(api.calls('PUT', '/registry/projects/7/endpoints/4')).toHaveLength(1))
+    expect(api.calls('PUT', '/registry/projects/7/endpoints/4')[0].body).toEqual({ verification_status: 'confirmed' })
+    expect(await screen.findByText(/Confirmed by Admin on/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mark https://acme.example/api unverified' })).toBeInTheDocument()
+  })
+
+  it('ticks a secret off the Bitwarden checklist', async () => {
+    const secret = { id: 2, ref: 'vault://ngp/acme/db-password', status: 'to_create', provider: 'bitwarden', purpose: null, environment: 'production', related_env_vars: ['DB_PASSWORD'] }
+    const { api, user } = renderPage({
+      route: '/projects/7?tab=accounts',
+      extra: {
+        'GET /registry/projects/:id/secret-refs': () => paginated([secret]),
+        'PUT /registry/projects/:id/secret-refs/:item': ({ body }) => ({ data: { ...secret, ...body } }),
+      },
+    })
+
+    expect(await screen.findByText('1 secret to create')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'vault://ngp/acme/db-password created in the vault' }))
+    await waitFor(() => expect(api.calls('PUT', '/registry/projects/7/secret-refs/2')).toHaveLength(1))
+    expect(api.calls('PUT', '/registry/projects/7/secret-refs/2')[0].body).toEqual({ status: 'exists' })
+  })
+
+  it('offers the catalog technologies and the project modules in the selects', async () => {
+    const { user } = renderPage({
+      route: '/projects/7?tab=tech',
+      extra: { 'GET /registry/technologies': () => paginated([{ id: 11, name: 'Laravel', slug: 'laravel', category: 'backend' }]) },
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Add technology' }))
+    const select = within(screen.getByRole('dialog')).getByLabelText(/^Technology/)
+    expect([...select.options].map((option) => option.textContent)).toEqual(['Choose…', 'Laravel · Backend'])
+  })
+
+  it('shows the 16 non-functional attribute cards and documents one', async () => {
+    const { api, user } = renderPage({
+      route: '/projects/7?tab=nonfunctional',
+      extra: {
+        'GET /registry/projects/:id/quality-attributes': () => paginated([{ id: 1, attribute: 'security', implemented: ['Sanctum tokens'], verified: [], assumptions: [], recommendations: ['Add MFA'], evidence: [] }]),
+        'POST /registry/projects/:id/quality-attributes': ({ body }) => reply(201, { data: { id: 2, ...body } }),
+      },
+    })
+
+    expect(await (await findRegion('Security')).findByText('Sanctum tokens')).toBeInTheDocument()
+    expect(screen.getAllByText('Not documented yet')).toHaveLength(15)
+    await user.click(screen.getByRole('button', { name: 'Document Performance' }))
+    await user.type(within(screen.getByRole('dialog')).getByLabelText('Implemented'), 'Redis cache, 60 s{Enter}Query eager loading')
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('POST', '/registry/projects/7/quality-attributes')).toHaveLength(1))
+    expect(api.calls('POST', '/registry/projects/7/quality-attributes')[0].body).toEqual({
+      attribute: 'performance',
+      implemented: ['Redis cache, 60 s', 'Query eager loading'],
+      verified: [],
+      assumptions: [],
+      recommendations: [],
+      evidence: [],
+    })
+  })
+})

@@ -416,7 +416,7 @@ describe('ProjectEdit', () => {
     expect(screen.getAllByRole('button', { name: 'Drag to reorder' })).toHaveLength(3) // the three gallery tiles
     expect(field('Video link')).toHaveValue('https://youtu.be/abc123')
 
-    await user.click(tab('General'))
+    await user.click(tab('Overview'))
     await user.type(field(/^Client/), '!')
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
@@ -528,7 +528,7 @@ describe('ProjectEdit', () => {
     expect(await screen.findByText('The client field must not be greater than 255 characters.')).toBeInTheDocument()
     expect(field(/^Client/)).toHaveValue('Acme Ltd')
     expect(field(/^Client/)).toHaveFocus() // the open tab has the first error
-    tabName('General', '1 error')
+    tabName('Overview', '1 error')
     tabName('Media', '1 error')
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
@@ -563,16 +563,16 @@ describe('ProjectEdit', () => {
     expect(screen.queryByText('Could not load the data.')).not.toBeInTheDocument()
   })
 
-  it('warns about unsaved General / Media changes while another tab is open, and hides Save there', async () => {
+  it('warns about unsaved Overview / Media changes while another tab is open, and hides Save there', async () => {
     editServer()
     const { user } = renderWithProviders(<ProjectEdit />, { route, path })
     await user.type(await screen.findByLabelText(/^Client/), '!')
 
     await user.click(tab('Team'))
 
-    expect(screen.getByText(/You have unsaved changes in General or Media/)).toBeInTheDocument()
+    expect(screen.getByText(/You have unsaved changes in Overview or Media/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument() // hidden with the form
-    await user.click(tab('General'))
+    await user.click(tab('Overview'))
     expect(screen.queryByText(/You have unsaved changes/)).not.toBeInTheDocument()
     expect(field(/^Client/)).toHaveValue('Acme!') // still there
   })

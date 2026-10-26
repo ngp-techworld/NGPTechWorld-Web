@@ -112,6 +112,42 @@ function RecordForm({ config, record, ctx, canWrite, onSubmit }) {
 }
 
 /**
+ * The add / edit / view dialog of one record, its form generated from `config.fields` (and `config.defaults`,
+ * `config.upload`). `onSubmit({ values, fields, baseline, file })` saves (a 422 lands on the fields) and closes.
+ * Exported for the screens that show records another way than a table (non-functional cards, screenshots).
+ */
+export function RecordDialog({ open, onClose, title, config, record, ctx, canWrite = false, onSubmit, saving = false }) {
+  const c = useCommon()
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      size={config.modalSize ?? 'lg'}
+      closeOnBackdrop={false}
+      footer={
+        canWrite ? (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={saving}>
+              {c.cancel}
+            </Button>
+            <Button type="submit" form={FORM_ID} loading={saving}>
+              {saving ? c.saving : c.save}
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" onClick={onClose}>
+            {c.close}
+          </Button>
+        )
+      }
+    >
+      <RecordForm key={record?.id ?? 'new'} config={config} record={record} ctx={ctx} canWrite={canWrite} onSubmit={onSubmit} />
+    </Modal>
+  )
+}
+
+/**
  * One registry collection of a project (or a catalog): a table plus an add / edit dialog generated from a field list.
  *
  *   <CollectionTab resource={`/registry/projects/${id}/modules`} config={modulesConfig(t, r)} canWrite={abilities.updatePublic} />
@@ -123,9 +159,10 @@ function RecordForm({ config, record, ctx, canWrite, onSubmit }) {
  *   upload?: { accept, extensions, maxMB, label, hint } (create sends multipart with `file`), modalSize?
  * }
  * helpers = { canWrite, open(row), update(row, data) (quiet inline change), isUpdating(row), ctx }.
- * Without `canWrite` the table and the dialog are read-only (no add, no delete). Every successful change calls `onChanged`.
+ * Without `canWrite` the table and the dialog are read-only (no add, no delete); `canCreate` (default: `canWrite`) controls
+ * the add button alone. `notice` is shown under the title. Every successful change calls `onChanged`.
  */
-export function CollectionTab({ resource, config, canWrite = false, ctx, onChanged, className }) {
+export function CollectionTab({ resource, config, canWrite = false, canCreate = canWrite, ctx, onChanged, notice, className }) {
   const c = useCommon()
   const r = useStrings(registryStrings)
   const toast = useToast()
@@ -206,12 +243,13 @@ export function CollectionTab({ resource, config, canWrite = false, ctx, onChang
           <h2 className="text-base font-bold text-ink">{config.title}</h2>
           {config.description ? <p className="mt-0.5 max-w-3xl text-sm text-muted">{config.description}</p> : null}
         </div>
-        {canWrite ? (
+        {canCreate ? (
           <Button size="sm" icon={config.upload ? Upload : Plus} onClick={() => open(null)}>
             {r.addItem(config.itemLabel)}
           </Button>
         ) : null}
       </div>
+      {notice}
       {config.search || config.filters?.length ? (
         <div className="flex flex-wrap items-center gap-3">
           {config.search ? (
@@ -252,31 +290,17 @@ export function CollectionTab({ resource, config, canWrite = false, ctx, onChang
       )}
       {list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
 
-      <Modal
+      <RecordDialog
         open={dialog.open}
         onClose={close}
         title={dialog.record ? (canWrite ? r.editItem(config.itemLabel) : r.viewItem(config.itemLabel)) : r.addItem(config.itemLabel)}
-        size={config.modalSize ?? 'lg'}
-        closeOnBackdrop={false}
-        footer={
-          canWrite ? (
-            <>
-              <Button variant="secondary" onClick={close} disabled={create.isPending || update.isPending}>
-                {c.cancel}
-              </Button>
-              <Button type="submit" form={FORM_ID} loading={create.isPending || update.isPending}>
-                {create.isPending || update.isPending ? c.saving : c.save}
-              </Button>
-            </>
-          ) : (
-            <Button variant="secondary" onClick={close}>
-              {c.close}
-            </Button>
-          )
-        }
-      >
-        <RecordForm key={dialog.record?.id ?? 'new'} config={config} record={dialog.record} ctx={ctx} canWrite={canWrite} onSubmit={save} />
-      </Modal>
+        config={config}
+        record={dialog.record}
+        ctx={ctx}
+        canWrite={canWrite}
+        onSubmit={save}
+        saving={create.isPending || update.isPending}
+      />
     </section>
   )
 }

@@ -3,7 +3,8 @@
 // are tested on their own (form.test.js).
 //
 // A field: { name, type, label, hint?, required?, max?, pattern?, patternMessage?, min?, maxValue?, maxItems?, itemMax?,
-//            itemPattern?, nullable?, defaultValue?, options?, fields? (objectList items), rows?, multiline?, dir?, span? }
+//            itemPattern?, nullable?, numeric? (a select of ids), defaultValue?, options?, fields? (objectList items),
+//            rows?, multiline?, dir?, span? }
 // Types: text · textarea · url · number · date · select · boolSelect · switch · tags · lines · checkboxes ·
 //        bilingual (name → name_ar / name_en) · objectList (list of objects, see `fields`) · readonly · section.
 // `name` may be a dotted path ("tests.exist"): the body then nests it (`{ tests: { exist } }`).
@@ -77,7 +78,7 @@ export function fromFormValue(field, value) {
       return value ? value : null
     case 'select':
       if (value === '' || value === null || value === undefined) return field.nullable === false ? undefined : null
-      return value
+      return field.numeric ? Number(value) : value
     default: {
       const text = typeof value === 'string' ? value.trim() : value
       if (text === '' || text === null || text === undefined) return field.required ? '' : null
