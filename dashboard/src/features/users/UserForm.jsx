@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useCommon, useStrings } from '@/i18n'
 import { applyServerErrors } from '@/lib/applyServerErrors'
 import { Card, Checkbox, Field, FormActions, Input, PasswordInput, Select } from '@/ui'
-import { SECTIONS, emptyUser, makeUserSchema, toPayload } from './schema'
+import { REGISTRY_ROLES, SECTIONS, emptyUser, makeUserSchema, toPayload } from './schema'
 import strings from './strings'
 
 /**
@@ -26,6 +26,7 @@ export function UserForm({ defaultValues = emptyUser, onSubmit, saving = false, 
   } = useForm({ resolver: zodResolver(schema), defaultValues })
 
   const role = watch('role')
+  const registryRole = watch('registry_role')
   const isLimited = role === 'admin'
 
   const submit = handleSubmit(async (values) => {
@@ -67,7 +68,16 @@ export function UserForm({ defaultValues = emptyUser, onSubmit, saving = false, 
           </Field>
 
           {isLimited ? (
-            <Field label={t.permissionsLabel} error={errors.permissions} required hint={t.permissionsHint}>
+            <Field label={t.registryRoleLabel} error={errors.registry_role} hint={registryRole ? t.registryRoleHints[registryRole] : t.registryRoleNoneHint}>
+              <Select
+                {...register('registry_role')}
+                options={[{ value: '', label: t.registryRoleNone }, ...REGISTRY_ROLES.map((value) => ({ value, label: t.registryRoles[value] }))]}
+              />
+            </Field>
+          ) : null}
+
+          {isLimited ? (
+            <Field label={t.permissionsLabel} error={errors.permissions} required={!registryRole} hint={registryRole ? t.permissionsHintWithRegistry : t.permissionsHint}>
               <Controller
                 name="permissions"
                 control={control}

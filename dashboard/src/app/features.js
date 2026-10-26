@@ -40,7 +40,22 @@ export function buildNav(features) {
   })).filter((entry) => entry.items.length)
 }
 
-/** All feature routes, ready for <Route>/useRoutes children (paths are relative to the app root). */
-export const buildRoutes = (features) => features.flatMap((feature) => feature.routes)
+/**
+ * All feature routes, ready for <Route>/useRoutes children (paths are relative to the app root). Two features may
+ * offer the same page (the project page belongs to `projects` and to `registry`, so it exists for whoever sees
+ * either): a path is kept once, the first feature in nav order wins.
+ */
+export function buildRoutes(features) {
+  const seen = new Set()
+  return features
+    .flatMap((feature) => feature.routes)
+    .filter((route) => {
+      const key = route.index ? '(index)' : route.path
+      if (key === undefined) return true
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
 
 export const features = collectFeatures()

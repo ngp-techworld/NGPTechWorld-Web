@@ -36,6 +36,17 @@ describe('buildNav / buildRoutes', () => {
   it('flattens every feature route', () => {
     expect(buildRoutes(list).map((route) => route.path ?? 'index')).toEqual(['index', 'faqs', 'faqs/new', 'users', 'hidden'])
   })
+
+  it('keeps a page offered by two features once (the first one wins)', () => {
+    const first = { path: 'projects/:id', element: 'first' }
+    const shared = [
+      { id: 'registry', routes: [{ path: 'registry' }, first] },
+      { id: 'projects', routes: [{ path: 'projects' }, { path: 'projects/:id', element: 'second' }] },
+    ]
+    const routes = buildRoutes(shared)
+    expect(routes.map((route) => route.path)).toEqual(['registry', 'projects/:id', 'projects'])
+    expect(routes[1]).toBe(first)
+  })
 })
 
 describe('the real features folder (import.meta.glob)', () => {
