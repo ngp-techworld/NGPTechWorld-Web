@@ -59,11 +59,11 @@ export default function ScreenshotGallery({ project }) {
   )
 
   return (
-    <PfSection title={t.dGallery} count={shots.length} action={switcher}>
+    <PfSection title={t.dGallery} count={list.length} action={switcher}>
       <ul className={`pf-shots pf-shots--${view}`}>
         {list.map((shot, i) => (
           <li key={`${view}-${i}`}>
-            <button type="button" className="pf-shot" onClick={() => setOpen(i)} aria-label={shot.title || t.pfOpenShot(i + 1)}>
+            <button type="button" className="pf-shot" onClick={() => setOpen(i)} aria-label={shot.title ? `${t.pfOpenShot(i + 1)}: ${shot.title}` : t.pfOpenShot(i + 1)}>
               <span className="pf-shot__frame block">
                 <SmartImage src={shot.src} srcSet={shot.srcSet} sizes={SIZES[view]} className="absolute inset-0" />
               </span>

@@ -230,6 +230,7 @@ export default {
   // The portfolio pages (/portfolio and /portfolio/:slug).
   pfIndex: (projects, fields) => `${projects} published ${projects === 1 ? 'project' : 'projects'} across ${fields} ${fields === 1 ? 'field' : 'fields'}`,
   pfFeatured: 'Featured work',
+  pfAllProjects: 'All projects',
   pfSearch: 'Search projects',
   pfSearchHint: 'Name, industry or technology',
   pfCategory: 'Category',

@@ -252,6 +252,7 @@ export default {
   // صفحتا معرض الأعمال (/portfolio و /portfolio/:slug).
   pfIndex: (projects, fields) => `${countAr(projects, PROJECTS_PUBLISHED_AR)} في ${countAr(fields, FIELDS_AR)}`,
   pfFeatured: 'أعمال مميّزة',
+  pfAllProjects: 'كل المشاريع',
   pfSearch: 'ابحث في المشاريع',
   pfSearchHint: 'الاسم أو القطاع أو التقنية',
   pfCategory: 'التصنيف',

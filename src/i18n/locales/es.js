@@ -231,6 +231,7 @@ export default {
   // Las páginas del portafolio (/portfolio y /portfolio/:slug).
   pfIndex: (projects, fields) => `${projects} ${projects === 1 ? 'proyecto publicado' : 'proyectos publicados'} en ${fields} ${fields === 1 ? 'área' : 'áreas'}`,
   pfFeatured: 'Trabajos destacados',
+  pfAllProjects: 'Todos los proyectos',
   pfSearch: 'Buscar proyectos',
   pfSearchHint: 'Nombre, sector o tecnología',
   pfCategory: 'Categoría',

@@ -239,21 +239,32 @@ describe('the screenshot gallery', () => {
     api.getProject.mockResolvedValue({ ...full, screenshots: [shot(1, 'desktop'), shot(2, 'mobile'), shot(3, 'mobile-web')] })
     renderAt()
     const group = await screen.findByRole('group', { name: t.pfScreenSize })
-    expect(screen.getByRole('button', { name: 'لقطة 1' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'لقطة 2' })).toBeNull()
+    const gallery = group.closest('section')
+    const count = () => gallery.querySelector('.pf-section__count').textContent
+    expect(screen.getByRole('button', { name: /لقطة 1$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /لقطة 2$/ })).toBeNull()
+    expect(count()).toBe('1') // counts what the switch shows, not every screenshot
 
     fireEvent.click(within(group).getByRole('button', { name: t.pfMobile }))
 
     expect(within(group).getByRole('button', { name: t.pfMobile })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'لقطة 2' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'لقطة 3' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'لقطة 1' })).toBeNull()
+    expect(screen.getByRole('button', { name: /لقطة 2$/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /لقطة 3$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /لقطة 1$/ })).toBeNull()
+    expect(count()).toBe('2')
+  })
+
+  test('names each thumbnail as something that opens, followed by its caption', async () => {
+    api.getProject.mockResolvedValue({ ...full, screenshots: [shot(1, 'desktop'), shot(2, 'desktop', { title_ar: null })] })
+    renderAt()
+    expect(await screen.findByRole('button', { name: `${t.pfOpenShot(1)}: لقطة 1` })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.pfOpenShot(2) })).toBeInTheDocument()
   })
 
   test('opens the lightbox on the screenshot clicked, captioned in the reading language', async () => {
     api.getProject.mockResolvedValue({ ...full, screenshots: [shot(1, 'desktop'), shot(2, 'desktop', { description_ar: 'تفاصيل الطلب' })] })
     renderAt()
-    fireEvent.click(await screen.findByRole('button', { name: 'لقطة 2' }))
+    fireEvent.click(await screen.findByRole('button', { name: /لقطة 2$/ }))
 
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText(t.pfCounter(2, 2))).toBeInTheDocument()

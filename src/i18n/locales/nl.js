@@ -230,6 +230,7 @@ export default {
   // De portfoliopagina's (/portfolio en /portfolio/:slug).
   pfIndex: (projects, fields) => `${projects} ${projects === 1 ? 'gepubliceerd project' : 'gepubliceerde projecten'} in ${fields} ${fields === 1 ? 'vakgebied' : 'vakgebieden'}`,
   pfFeatured: 'Uitgelicht werk',
+  pfAllProjects: 'Alle projecten',
   pfSearch: 'Projecten zoeken',
   pfSearchHint: 'Naam, sector of technologie',
   pfCategory: 'Categorie',

@@ -48,6 +48,9 @@ export default function PortfolioResults({ list, filtered, onClear }) {
 
   return (
     <section>
+      {/* Gives the cards (h3) a parent heading of their own — without it they would read as part of
+          the featured strip above, or jump straight from the page's h1. */}
+      <h2 className="sr-only">{t.pfAllProjects}</h2>
       <ul ref={listRef} className="pf-grid" aria-label={t.portfolioTitle} aria-busy={loading}>
         {loading
           ? Array.from({ length: FIRST_PAGE_SKELETONS }, (_, i) => <li key={`s${i}`}><PortfolioCardSkeleton /></li>)

@@ -397,16 +397,26 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 .pf-detail-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px }
 
 /* The spec rail: what a buyer asks first, as a definition list. A cell with nothing in it is not
-   rendered at all, so a missing client or year leaves no empty label or stray separator behind. */
+   rendered at all, so a missing client or year leaves no empty label or stray separator behind.
+   The number of columns is fixed per width — two on a phone, three on a tablet, one row above —
+   rather than auto-fit, so a divider always sits between two cells of the same row and never at the
+   start of a row that wrapped. */
 .pf-spec {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 28px;
   border-block: 1px solid var(--line-soft);
 }
-.pf-spec__cell { padding: 14px 18px 14px 0; min-width: 0 }
-[dir='rtl'] .pf-spec__cell { padding: 14px 0 14px 18px }
-.pf-spec__cell + .pf-spec__cell { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 18px }
+.pf-spec__cell { min-width: 0; padding-block: 14px; padding-inline: 0 18px }
+@media (min-width: 561px) and (max-width: 899.98px) {
+  .pf-spec { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .pf-spec__cell:not(:nth-child(3n+1)) { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 18px }
+  .pf-spec__cell:nth-child(n+4) { border-top: 1px solid var(--line-soft) }
+}
+@media (min-width: 900px) {
+  .pf-spec { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr) }
+  .pf-spec__cell + .pf-spec__cell { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 18px }
+}
 .pf-spec__label { font-size: 12.5px; color: var(--text-faint) }
 .pf-spec__value { margin-top: 5px; font-size: 15px; color: var(--text-strong); overflow-wrap: break-word }
 .pf-spec__link { display: inline-flex; align-items: center; gap: 6px; max-width: 100% }
@@ -415,19 +425,17 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 .pf-spec__platforms { display: flex; flex-wrap: wrap; gap: 6px 14px }
 .pf-spec__platform { display: inline-flex; align-items: center; gap: 6px }
 @media (max-width: 560px) {
-  .pf-spec { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .pf-spec__cell,
-  [dir='rtl'] .pf-spec__cell { padding: 12px 0; border-inline-start: none !important; padding-inline-start: 0 !important }
-  .pf-spec__cell:nth-child(even) { padding-inline-start: 14px !important; border-inline-start: 1px solid var(--line-soft) !important }
+  .pf-spec__cell { padding-block: 12px; padding-inline-end: 14px }
+  .pf-spec__cell:nth-child(even) { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 14px }
   .pf-spec__cell:nth-child(n+3) { border-top: 1px solid var(--line-soft) }
   /* The demo address is the longest value and always the last fact: give it the whole row. */
-  .pf-spec__cell.pf-spec__cell--wide { grid-column: 1 / -1; border-inline-start: none !important; padding-inline-start: 0 !important; border-top: 1px solid var(--line-soft) }
+  .pf-spec__cell.pf-spec__cell--wide { grid-column: 1 / -1; border-inline-start: none; padding-inline-start: 0; border-top: 1px solid var(--line-soft) }
 }
 
 .pf-detail-cover { margin-top: clamp(28px, 4vw, 40px); border-radius: 24px; overflow: hidden; border: 1px solid var(--line-soft); aspect-ratio: 16 / 9 }
 
 .pf-section { margin-top: clamp(52px, 8vw, 88px) }
-.pf-section__head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 22px }
+.pf-section__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 12px; margin-bottom: 22px }
 .pf-section__title { font-size: clamp(22px, 3.2vw, 30px); font-weight: 700; line-height: 1.25; color: var(--text-strong) }
 .pf-section__count { font-family: 'Poppins', sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-faint) }
 
@@ -509,6 +517,7 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
   color: var(--text-muted);
   font-size: 14px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background-color .2s ease, color .2s ease;
 }
 .pf-switch button[aria-pressed='true'] { background: var(--surface-brand); color: var(--text-on-brand) }
@@ -550,7 +559,7 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 }
 .pf-lightbox__bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(14px, 3vw, 28px) }
 .pf-lightbox__counter { font-family: 'Poppins', sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .75) }
-.pf-lightbox__stage { position: relative; display: grid; place-items: center; padding: 0 clamp(8px, 7vw, 92px); min-height: 0; touch-action: pan-y }
+.pf-lightbox__stage { position: relative; display: grid; place-items: center; padding: 0 clamp(8px, 7vw, 92px); min-height: 0; touch-action: pan-y pinch-zoom }
 .pf-lightbox__img {
   max-width: 100%;
   max-height: 100%;

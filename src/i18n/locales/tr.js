@@ -230,6 +230,7 @@ export default {
   // Portföy sayfaları (/portfolio ve /portfolio/:slug).
   pfIndex: (projects, fields) => `${fields} alanda ${projects} yayımlanmış proje`,
   pfFeatured: 'Öne çıkan çalışmalar',
+  pfAllProjects: 'Tüm projeler',
   pfSearch: 'Projelerde ara',
   pfSearchHint: 'Ad, sektör veya teknoloji',
   pfCategory: 'Kategori',

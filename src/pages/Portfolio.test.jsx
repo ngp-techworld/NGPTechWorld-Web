@@ -229,6 +229,14 @@ describe('the results', () => {
     expect(screen.getByText(t.pfResults(2))).toBeInTheDocument()
   })
 
+  test('sit under their own heading, so card titles do not nest under the featured strip', async () => {
+    renderAt()
+    await within(results()).findByRole('link', { name: /مشروع alpha/ })
+    const heading = screen.getByRole('heading', { level: 2, name: t.pfAllProjects })
+    expect(heading.compareDocumentPosition(results()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(results()).getAllByRole('heading', { level: 3 }).length).toBeGreaterThan(0)
+  })
+
   test('show skeletons while the first page loads', async () => {
     const pending = deferred()
     api.getPortfolio.mockImplementation((params) => (params.featured ? Promise.resolve(page([])) : pending.promise))

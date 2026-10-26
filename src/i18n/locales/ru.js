@@ -239,6 +239,7 @@ export default {
   // Страницы портфолио (/portfolio и /portfolio/:slug).
   pfIndex: (projects, fields) => `${projects} ${pluralRu(projects, ['опубликованный проект', 'опубликованных проекта', 'опубликованных проектов'])} в ${fields} ${pluralRu(fields, ['направлении', 'направлениях', 'направлениях'])}`,
   pfFeatured: 'Избранные работы',
+  pfAllProjects: 'Все проекты',
   pfSearch: 'Поиск проектов',
   pfSearchHint: 'Название, отрасль или технология',
   pfCategory: 'Категория',

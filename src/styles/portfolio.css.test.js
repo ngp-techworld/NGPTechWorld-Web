@@ -58,6 +58,20 @@ describe('portfolio.css keeps long content inside narrow screens', () => {
     expect(chip).toMatch(/display:\s*inline-block/) // text-overflow needs a block container
   })
 
+  it('wraps a section heading and its controls instead of squeezing them', () => {
+    expect(declarationsOf('.pf-section__head')).toMatch(/flex-wrap:\s*wrap/)
+    expect(declarationsOf('.pf-switch button')).toMatch(/white-space:\s*nowrap/)
+  })
+
+  it('lets a phone pinch-zoom a screenshot in the lightbox', () => {
+    expect(declarationsOf('.pf-lightbox__stage')).toMatch(/touch-action:\s*pan-y pinch-zoom/)
+  })
+
+  it('lays the spec rail out with logical padding, without a right-to-left copy of it', () => {
+    expect(declarationsOf('.pf-spec__cell')).not.toMatch(/padding:\s*\S+ \S+ \S+ \S+/)
+    expect(RULES.some(([s]) => s.includes("[dir='rtl'] .pf-spec__cell"))).toBe(false)
+  })
+
   it.each([
     '.pf-hero__title', '.pf-card__title', '.pf-card__short', '.pf-card__highlight', '.pf-feature-card__name',
     '.pf-detail-hero__title', '.pf-detail-hero__lead', '.pf-prose', '.pf-ps__text', '.pf-feature__name',
