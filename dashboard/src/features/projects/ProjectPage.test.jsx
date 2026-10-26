@@ -51,6 +51,7 @@ describe('project page: tabs by abilities', () => {
     expect(tabNames()).toEqual(PUBLIC)
     expect(screen.queryByRole('region', { name: 'Administration' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Project members' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Publication' })).toBeInTheDocument()
   })
 
   it('opens a tab from ?tab= and falls back to the Overview for a tab the caller cannot read', async () => {

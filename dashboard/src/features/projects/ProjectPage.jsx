@@ -15,6 +15,7 @@ import { TeamTab } from './TeamTab'
 import { OVERVIEW_FIELDS, changedOverviewPayload, makeOverviewSchema, toFormErrorKey, toOverviewValues } from './overviewSchema'
 import { MembersCard } from './registry/MembersCard'
 import { NonFunctionalTab } from './registry/NonFunctionalTab'
+import { PublicationCard } from './registry/PublicationCard'
 import { administrationFields } from './registry/groups'
 import registryTabStrings from './registry/strings'
 import { AccountsTab, DataTab, DeploymentTab, EnvironmentsTab, FeaturesTab, MaintenanceTab, TechStackTab } from './registry/tabs'
@@ -198,6 +199,7 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
       {panel(
         'overview',
         <>
+          {hasRegistry ? <PublicationCard registry={registry} /> : null}
           {!canEdit ? <Alert tone="info">{rt.readOnlyContent}</Alert> : null}
           <form onSubmit={submit} noValidate aria-label={rt.formLabel} className="space-y-5">
             <fieldset disabled={!canEdit} className="min-w-0 space-y-5">
