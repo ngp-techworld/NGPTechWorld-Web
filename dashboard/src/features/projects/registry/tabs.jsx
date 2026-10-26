@@ -1,14 +1,16 @@
-import { ExternalLink } from 'lucide-react'
+import { Download, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { canCreateProjects } from '@/app/permissions'
-import { CollectionTab, GroupForm, registryPath, technologiesCatalog, useRefreshRegistry } from '@/features/registry/kit'
+import { CollectionTab, GroupForm, apiPathOf, registryPath, technologiesCatalog, useRefreshRegistry } from '@/features/registry/kit'
+import { api, saveBlob } from '@/lib/api'
 import { useCrudHooks } from '@/lib/crud'
-import { Alert, Badge, Button } from '@/ui'
+import { Alert, Badge, Button, useToast } from '@/ui'
 import {
   accountsConfig,
   backupsConfig,
   commandsConfig,
   databasesConfig,
+  documentsConfig,
   endpointsConfig,
   envVarsConfig,
   environmentsConfig,
@@ -100,6 +102,22 @@ export function MaintenanceTab({ registry }) {
       <CollectionTab resource={`${registryPath(registry.id)}/maintenance-records`} config={records} canWrite={abilities.updateInternal} />
     </div>
   )
+}
+
+export function DocumentsTab({ registry }) {
+  const env = useRegistryEnv()
+  const toast = useToast()
+  const base = useConfig(documentsConfig, env)
+  const download = async (row) => {
+    try {
+      const { blob, filename } = await api.download(apiPathOf(row.download_url) ?? `/registry/files/documents/${row.id}`)
+      saveBlob(blob, filename || row.original_name || row.title)
+    } catch {
+      toast.error(env.t.downloadFailed)
+    }
+  }
+  const config = { ...base, rowActions: (row) => [{ key: 'download', label: env.t.downloadOf(row.title), icon: Download, onClick: () => download(row) }] }
+  return <CollectionTab resource={`${registryPath(registry.id)}/documents`} config={config} canWrite={registry.abilities.updateInternal} />
 }
 
 export function AccountsTab({ registry }) {

@@ -16,9 +16,10 @@ import { OVERVIEW_FIELDS, changedOverviewPayload, makeOverviewSchema, toFormErro
 import { MembersCard } from './registry/MembersCard'
 import { NonFunctionalTab } from './registry/NonFunctionalTab'
 import { PublicationCard } from './registry/PublicationCard'
+import { ScreenshotsTab } from './registry/ScreenshotsTab'
 import { administrationFields } from './registry/groups'
 import registryTabStrings from './registry/strings'
-import { AccountsTab, DataTab, DeploymentTab, EnvironmentsTab, FeaturesTab, MaintenanceTab, TechStackTab } from './registry/tabs'
+import { AccountsTab, DataTab, DeploymentTab, DocumentsTab, EnvironmentsTab, FeaturesTab, MaintenanceTab, TechStackTab } from './registry/tabs'
 import { useRegistryEnv } from './registry/useRegistryEnv'
 import { TAB_FIELDS, changedPayload, makeProjectSchema, toFormValues } from './schema'
 import strings from './strings'
@@ -239,12 +240,12 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
 
       {panel('features', hasRegistry ? <FeaturesTab registry={registry} /> : null)}
       {panel('tech', hasRegistry ? <TechStackTab registry={registry} /> : null)}
-      {panel('screenshots', null)}
+      {panel('screenshots', hasRegistry ? <ScreenshotsTab registry={registry} /> : null)}
       {panel('team', <TeamTab projectId={project.id} />)}
       {panel('links', <LinksTab projectId={project.id} />)}
       {panel('nonfunctional', hasRegistry ? <NonFunctionalTab registry={registry} /> : null)}
       {panel('maintenance', hasRegistry ? <MaintenanceTab registry={registry} /> : null)}
-      {panel('documents', null)}
+      {panel('documents', hasRegistry ? <DocumentsTab registry={registry} /> : null)}
       {panel('accounts', hasRegistry ? <AccountsTab registry={registry} /> : null)}
       {panel('environments', hasRegistry ? <EnvironmentsTab registry={registry} /> : null)}
       {panel('deployment', hasRegistry ? <DeploymentTab registry={registry} /> : null)}
