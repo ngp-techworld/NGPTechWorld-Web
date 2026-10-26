@@ -5,6 +5,7 @@ import { useLang } from '../i18n/LanguageContext'
 import PageTitle from '../components/PageTitle'
 import { Skeleton } from '../components/fx/Skeleton'
 import ProjectHero from '../components/portfolio/ProjectHero'
+import ScreenshotGallery from '../components/portfolio/ScreenshotGallery'
 import {
   ProblemSolution, ProjectFeatures, ProjectHighlights, ProjectModules, ProjectOverview, TechStack,
 } from '../components/portfolio/ProjectSections'
@@ -85,6 +86,7 @@ export default function ProjectDetail() {
       <ProjectModules project={project} />
       <ProjectHighlights project={project} />
       <TechStack project={project} />
+      <ScreenshotGallery project={project} />
       <ProjectVideo project={project} />
       <ProjectTeam project={project} />
       <ProjectLinks project={project} />

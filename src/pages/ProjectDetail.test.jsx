@@ -208,3 +208,64 @@ describe('loading and errors', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'متجر الصقر' })).toBeInTheDocument()
   })
 })
+
+describe('the screenshot gallery', () => {
+  const shot = (n, platform, extra = {}) => ({
+    url: `https://api.test/media/s${n}.png`, srcset: null, width: 1440, height: 900,
+    title_ar: `لقطة ${n}`, title_en: `Shot ${n}`, description_ar: null, description_en: null,
+    platform, language: 'ar', module: null, is_cover: false, ...extra,
+  })
+
+  test('uses the srcset variants for the thumbnails when they exist, and the plain url otherwise', async () => {
+    api.getProject.mockResolvedValue({
+      ...full,
+      screenshots: [
+        shot(1, 'desktop', { srcset: 'https://api.test/media/s1-480.webp 480w, https://api.test/media/s1-960.webp 960w' }),
+        shot(2, 'desktop'),
+      ],
+    })
+    renderAt()
+    const gallery = (await screen.findByRole('heading', { level: 2, name: t.dGallery })).closest('section')
+    const [first, second] = gallery.querySelectorAll('img')
+
+    expect(first).toHaveAttribute('srcset', 'https://api.test/media/s1-480.webp 480w, https://api.test/media/s1-960.webp 960w')
+    expect(first.getAttribute('sizes')).toBeTruthy()
+    expect(second).toHaveAttribute('src', 'https://api.test/media/s2.png')
+    expect(second).not.toHaveAttribute('srcset')
+    expect(screen.queryByRole('group', { name: t.pfScreenSize })).toBeNull() // only one kind of screen
+  })
+
+  test('switches between desktop and mobile shots when the project has both', async () => {
+    api.getProject.mockResolvedValue({ ...full, screenshots: [shot(1, 'desktop'), shot(2, 'mobile'), shot(3, 'mobile-web')] })
+    renderAt()
+    const group = await screen.findByRole('group', { name: t.pfScreenSize })
+    expect(screen.getByRole('button', { name: 'لقطة 1' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'لقطة 2' })).toBeNull()
+
+    fireEvent.click(within(group).getByRole('button', { name: t.pfMobile }))
+
+    expect(within(group).getByRole('button', { name: t.pfMobile })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'لقطة 2' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'لقطة 3' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'لقطة 1' })).toBeNull()
+  })
+
+  test('opens the lightbox on the screenshot clicked, captioned in the reading language', async () => {
+    api.getProject.mockResolvedValue({ ...full, screenshots: [shot(1, 'desktop'), shot(2, 'desktop', { description_ar: 'تفاصيل الطلب' })] })
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: 'لقطة 2' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(t.pfCounter(2, 2))).toBeInTheDocument()
+    expect(within(dialog).getByText('تفاصيل الطلب')).toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: 'لقطة 2' })).toBeInTheDocument()
+  })
+
+  test('falls back to the legacy gallery urls when there are no screenshots', async () => {
+    api.getProject.mockResolvedValue({ ...full, screenshots: [], gallery: ['https://api.test/media/old.png'] })
+    renderAt()
+    const gallery = (await screen.findByRole('heading', { level: 2, name: t.dGallery })).closest('section')
+    expect(gallery.querySelector('img')).toHaveAttribute('src', 'https://api.test/media/old.png')
+    expect(within(gallery).getByRole('button', { name: t.pfOpenShot(1) })).toBeInTheDocument()
+  })
+})
