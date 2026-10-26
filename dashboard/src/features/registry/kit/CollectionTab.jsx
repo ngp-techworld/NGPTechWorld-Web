@@ -1,18 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Eye, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { Eye, ListOrdered, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useCommon, useStrings } from '@/i18n'
 import { applyServerErrors } from '@/lib/applyServerErrors'
 import { useCrudHooks } from '@/lib/crud'
 import { errorText } from '@/lib/errors'
 import { cx } from '@/lib/cx'
-import { Alert, Button, DataTable, Field, Input, Modal, Pagination, SearchInput, Select, useConfirm, useToast } from '@/ui'
+import { Alert, Button, DataTable, Field, Input, Modal, Pagination, SearchInput, Select, SortableList, useConfirm, useToast } from '@/ui'
 import { FieldGrid } from './RegistryField'
 import { belongsToForm, changedPayload, makeResolver, recordToValues, valuesToPayload } from './form'
 import { actionErrorText, localizeErrors } from './serverErrors'
 import registryStrings from './strings'
 
 const FORM_ID = 'registry-collection-form'
+const REORDER_LIMIT = 200
 
 /** A request body as multipart (uploads): booleans as 1/0, lists as `key[]`, nulls left out. */
 export function toFormData(payload, file) {
@@ -156,7 +157,8 @@ export function RecordDialog({ open, onClose, title, config, record, ctx, canWri
  *   title, description, itemLabel (dialog titles: "Add <itemLabel>"), fields (array, or (ctx, record) => array), defaults,
  *   columns: (helpers) => DataTable columns, rowName(row) (delete message), rowActions?(row, helpers) → extra actions,
  *   filters?: [{ name, label, options }], search?: bool, sort?: { sort, dir }, perPage?, emptyTitle, emptyHint,
- *   upload?: { accept, extensions, maxMB, label, hint } (create sends multipart with `file`), modalSize?
+ *   upload?: { accept, extensions, maxMB, label, hint } (create sends multipart with `file`), modalSize?,
+ *   reorderable?: bool (a Reorder mode: drag the rows, POST <resource>/reorder)
  * }
  * helpers = { canWrite, open(row), update(row, data) (quiet inline change), isUpdating(row), ctx }.
  * Without `canWrite` the table and the dialog are read-only (no add, no delete); `canCreate` (default: `canWrite`) controls
@@ -171,9 +173,14 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
   const [filters, setFilters] = useState({})
   const [page, setPage] = useState(1)
   const [dialog, setDialog] = useState({ open: false, record: null })
+  const [reordering, setReordering] = useState(false)
 
-  const params = { per_page: config.perPage ?? 100, page, sort: config.sort?.sort ?? 'order', dir: config.sort?.dir ?? 'asc', ...filters }
+  // reordering needs the whole list in one request (the API sets `order` = position of every id it gets)
+  const params = reordering
+    ? { per_page: REORDER_LIMIT, page: 1, sort: 'order', dir: 'asc' }
+    : { per_page: config.perPage ?? 100, page, sort: config.sort?.sort ?? 'order', dir: config.sort?.dir ?? 'asc', ...filters }
   const list = hooks.useList(params)
+  const reorder = hooks.useReorder({ onSuccess: () => onChanged?.() })
   const changed = () => onChanged?.()
   const create = hooks.useCreate({ onSuccess: changed })
   const update = hooks.useUpdate({ onSuccess: changed })
@@ -243,14 +250,34 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
           <h2 className="text-base font-bold text-ink">{config.title}</h2>
           {config.description ? <p className="mt-0.5 max-w-3xl text-sm text-muted">{config.description}</p> : null}
         </div>
-        {canCreate ? (
-          <Button size="sm" icon={config.upload ? Upload : Plus} onClick={() => open(null)}>
-            {r.addItem(config.itemLabel)}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {config.reorderable && canWrite ? (
+            reordering ? (
+              <Button size="sm" onClick={() => setReordering(false)}>
+                {c.reorderDone}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={ListOrdered}
+                onClick={() => setReordering(true)}
+                disabled={list.rows.length < 2 || (list.meta?.total ?? 0) > REORDER_LIMIT}
+                title={(list.meta?.total ?? 0) > REORDER_LIMIT ? c.reorderTooMany(REORDER_LIMIT) : undefined}
+              >
+                {c.reorder}
+              </Button>
+            )
+          ) : null}
+          {canCreate && !reordering ? (
+            <Button size="sm" icon={config.upload ? Upload : Plus} onClick={() => open(null)}>
+              {r.addItem(config.itemLabel)}
+            </Button>
+          ) : null}
+        </div>
       </div>
       {notice}
-      {config.search || config.filters?.length ? (
+      {!reordering && (config.search || config.filters?.length) ? (
         <div className="flex flex-wrap items-center gap-3">
           {config.search ? (
             <SearchInput value={filters.search ?? ''} onChange={(search) => setFilter('search', search)} placeholder={config.searchPlaceholder} className="min-w-[200px] flex-1" />
@@ -272,6 +299,23 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
         <Alert tone="danger" title={c.loadFailed} action={<Button size="sm" variant="secondary" onClick={() => list.refetch()}>{c.retry}</Button>}>
           {errorText(list.error, c)}
         </Alert>
+      ) : reordering ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted">{c.reorderHint}</p>
+          <SortableList
+            items={rows}
+            ariaLabel={config.title}
+            onReorder={(next) => reorder.mutate(next.map((row) => row.id))}
+            renderItem={(row, { handle, isDragging }) => (
+              <div className={cx('flex items-center gap-3 rounded-xl border bg-white/[.03] px-3 py-2 text-sm', isDragging ? 'border-accent-light' : 'border-white/[.08]')}>
+                {handle}
+                <span dir="auto" className="font-semibold text-ink">
+                  {config.rowName?.(row) ?? `#${row.id}`}
+                </span>
+              </div>
+            )}
+          />
+        </div>
       ) : (
         <DataTable
           columns={columns}
@@ -288,7 +332,7 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
           emptyIcon={config.icon}
         />
       )}
-      {list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
+      {!reordering && list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
 
       <RecordDialog
         open={dialog.open}
