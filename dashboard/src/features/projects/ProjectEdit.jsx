@@ -28,12 +28,15 @@ export default function ProjectEdit() {
   const refreshRegistry = useRefreshRegistry(id)
   const update = projects.useUpdate({ onSuccess: () => refreshRegistry() })
 
+  // back to a list this admin can open: the original list, or the registry list for registry-only accounts
+  const backTo = canAccessFeature({ id: 'projects' }, user) ? '/projects' : '/registry/projects'
+
   if (isLoading || registry.isLoading) return <PageSpinner />
 
   // `!project`: a failed background refetch keeps the old data on screen (and the form mounted) instead of an error page
   if (!project && isError) {
     return error.status === 404 ? (
-      <EmptyState icon={SearchX} title={t.notFoundTitle} description={c.itemNotFound} action={<Button to="/projects">{t.title}</Button>} />
+      <EmptyState icon={SearchX} title={t.notFoundTitle} description={c.itemNotFound} action={<Button to={backTo}>{t.title}</Button>} />
     ) : (
       <Alert
         tone="danger"
@@ -60,9 +63,6 @@ export default function ProjectEdit() {
   const record = registry.data ?? null
   // resolves with the saved project so the form can re-base itself on it
   const onSubmit = (payload) => update.mutateAsync({ id: project.id, data: payload })
-  // back to a list this admin can open: the original list, or the registry list for registry-only accounts
-  const backTo = canAccessFeature({ id: 'projects' }, user) ? '/projects' : '/registry/projects'
-
   return (
     <>
       <PageHeader

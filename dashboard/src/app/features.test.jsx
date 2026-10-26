@@ -88,8 +88,16 @@ describe('the real features folder (import.meta.glob)', () => {
     expect(dashboard.routes.some((route) => route.index === true)).toBe(true)
   })
 
-  it('no two features claim the same route path', () => {
-    const paths = features.flatMap((feature) => feature.routes.map((route) => (route.index ? '(index)' : route.path)))
-    expect(new Set(paths).size).toBe(paths.length)
+  it('no two features claim the same route path, unless they offer the very same page', () => {
+    // the project page belongs to `projects` and to `registry` (a registry-only account has no `projects` section):
+    // a shared path is fine when every feature renders the same component there, anything else is a collision
+    const byPath = new Map()
+    for (const feature of features) {
+      for (const route of feature.routes) {
+        const key = route.index ? '(index)' : route.path
+        byPath.set(key, [...(byPath.get(key) ?? []), route.element?.type])
+      }
+    }
+    for (const [path, pages] of byPath) expect(new Set(pages).size, path).toBe(1)
   })
 })

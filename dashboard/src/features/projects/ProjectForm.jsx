@@ -69,7 +69,7 @@ function SaveFirst({ description, busy, saving }) {
  * promise resolves with the saved record, the form is re-based on it (an explicit reset after a save — never on a
  * background refetch, so what the user is typing is not replaced).
  */
-export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit, saving = false, isEdit = false }) {
+export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit, saving = false, isEdit = false, listTo = '/projects' }) {
   const c = useCommon()
   const t = useStrings(strings)
   const f = useFormat()
@@ -151,7 +151,7 @@ export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit,
           <MediaFields form={form} project={project} onCoverBusy={setCoverBusy} onGalleryBusy={setGalleryBusy} />
         </TabPanel>
 
-        <FormActions saving={saving} dirty={isEdit ? isDirty : undefined} disabled={uploading} cancelTo="/projects" sticky />
+        <FormActions saving={saving} dirty={isEdit ? isDirty : undefined} disabled={uploading} cancelTo={listTo} sticky />
       </form>
 
       {isEdit && !isFormTab && isDirty ? <Alert tone="warning">{t.unsavedOnNested}</Alert> : null}
