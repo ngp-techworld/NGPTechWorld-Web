@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useLang } from '../i18n/LanguageContext'
@@ -52,12 +52,18 @@ export default function Portfolio() {
     }, options)
   }, [setSearchParams])
 
+  // Both "Clear filters" buttons disappear once there is nothing left to clear, so focus is handed
+  // to the search field rather than dropped to <body> with them.
+  const searchRef = useRef(null)
+  const [clearSignal, setClearSignal] = useState(0)
   const clearFilters = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       for (const key of Object.keys(FILTER_PARAMS)) next.delete(key)
       return next
     })
+    setClearSignal((n) => n + 1)
+    searchRef.current?.focus()
   }, [setSearchParams])
 
   const countText = list.status === 'ready' && list.total > 0 ? t.pfResults(list.total) : ''
@@ -73,6 +79,8 @@ export default function Portfolio() {
         onClear={clearFilters}
         filtered={filtered}
         countText={countText}
+        searchRef={searchRef}
+        clearSignal={clearSignal}
       />
       <PortfolioResults list={list} filtered={filtered} onClear={clearFilters} />
     </div>

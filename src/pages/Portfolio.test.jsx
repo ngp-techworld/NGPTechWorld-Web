@@ -154,6 +154,28 @@ describe('filters live in the URL', () => {
     await waitFor(() => expect(lastListCall()).toEqual({ page: 1, per_page: 12 }))
   })
 
+  test('"Clear filters" hands focus to the search field instead of dropping it with the button', async () => {
+    renderAt('/portfolio?category=web')
+    const clear = await screen.findByRole('button', { name: t.pfClear })
+    clear.focus()
+    fireEvent.click(clear)
+
+    expect(screen.queryByRole('button', { name: t.pfClear })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: t.pfSearch }))
+  })
+
+  test('"Clear filters" also drops a search that was typed but not yet sent', async () => {
+    renderAt('/portfolio?category=web')
+    const clear = await screen.findByRole('button', { name: t.pfClear })
+    fireEvent.change(screen.getByRole('searchbox', { name: t.pfSearch }), { target: { value: 'shop' } })
+    fireEvent.click(clear) // inside the 300 ms window
+
+    await act(() => new Promise((r) => setTimeout(r, 400)))
+    expect(urlSearch()).toBe('')
+    expect(screen.getByRole('searchbox', { name: t.pfSearch })).toHaveValue('')
+    expect(listCalls().some((p) => p.search)).toBe(false)
+  })
+
   test('there is nothing to clear when no filter is set', async () => {
     renderAt()
     await within(results()).findByRole('link', { name: /مشروع alpha/ })
@@ -200,6 +222,61 @@ describe('the results', () => {
     expect(results()).toHaveAttribute('aria-busy', 'true')
     await act(async () => pending.resolve(page([card('alpha')])))
     expect(results()).toHaveAttribute('aria-busy', 'false')
+  })
+
+  test('"load more" keeps keyboard focus: on the button while loading, then on the first new card', async () => {
+    const next = deferred()
+    api.getPortfolio.mockImplementation((params) => {
+      if (params.featured) return Promise.resolve(page([]))
+      return params.page === 2 ? next.promise : Promise.resolve(page([card('alpha'), card('beta')], 1, 2, 3))
+    })
+    renderAt()
+    const button = await screen.findByRole('button', { name: t.pfLoadMore })
+    button.focus()
+    fireEvent.click(button)
+
+    // Still focusable while busy — a disabled button would drop focus to <body>.
+    expect(button).toHaveTextContent(t.pfLoadingMore)
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toBeDisabled()
+    expect(document.activeElement).toBe(button)
+    fireEvent.click(button) // pressing again while busy asks for nothing more
+    expect(listCalls().filter((p) => p.page === 2)).toHaveLength(1)
+
+    // The last page removes the button; focus lands on what was just added instead of on <body>.
+    await act(async () => next.resolve(page([card('gamma')], 2, 2, 3)))
+    expect(screen.queryByRole('button', { name: t.pfLoadMore })).toBeNull()
+    expect(document.activeElement).toBe(within(results()).getByRole('link', { name: /مشروع gamma/ }))
+  })
+
+  test('"load more" moves focus to the first new card when more pages remain', async () => {
+    api.getPortfolio.mockImplementation(async (params) => {
+      if (params.featured) return page([])
+      if (params.page === 2) return page([card('gamma'), card('delta')], 2, 3, 6)
+      return page([card('alpha'), card('beta')], 1, 3, 6)
+    })
+    renderAt()
+    const button = await screen.findByRole('button', { name: t.pfLoadMore })
+    button.focus()
+    fireEvent.click(button)
+
+    await within(results()).findByRole('link', { name: /مشروع gamma/ })
+    expect(document.activeElement).toBe(within(results()).getByRole('link', { name: /مشروع gamma/ }))
+  })
+
+  test('"load more" leaves focus alone when the visitor has moved on while it loaded', async () => {
+    const next = deferred()
+    api.getPortfolio.mockImplementation((params) => {
+      if (params.featured) return Promise.resolve(page([]))
+      return params.page === 2 ? next.promise : Promise.resolve(page([card('alpha')], 1, 2, 2))
+    })
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: t.pfLoadMore }))
+    const box = screen.getByRole('searchbox', { name: t.pfSearch })
+    box.focus()
+
+    await act(async () => next.resolve(page([card('gamma')], 2, 2, 2)))
+    expect(document.activeElement).toBe(box)
   })
 
   test('"load more" appends the next page and keeps the earlier one', async () => {

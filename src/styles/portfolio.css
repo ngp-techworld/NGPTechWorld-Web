@@ -43,7 +43,8 @@
 .pf-btn--primary:hover { background: var(--surface-brand-hover); transform: translateY(-1px) }
 .pf-btn--ghost { background: var(--surface-1); color: var(--text-strong); border: 1px solid var(--line-medium) }
 .pf-btn--ghost:hover { border-color: var(--line-brand); background: var(--surface-3) }
-.pf-btn[disabled] { opacity: .6; cursor: progress; transform: none }
+.pf-btn[disabled],
+.pf-btn[aria-disabled='true'] { opacity: .6; cursor: progress; transform: none }
 
 /* A technology name: monospace because it is an identifier, the one place the mono face is used. */
 .pf-chip {

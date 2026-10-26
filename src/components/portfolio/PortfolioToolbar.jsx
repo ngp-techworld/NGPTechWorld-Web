@@ -15,7 +15,7 @@ const SEARCH_DELAY = 300
  * the field shows the new value. `committed` tells the two apart, so an answer to our own commit
  * arriving while the visitor is still typing never rewinds the field.
  */
-function SearchBox({ value, onCommit }) {
+function SearchBox({ value, onCommit, inputRef, clearSignal }) {
   const { t } = useLang()
   const [text, setText] = useState(value)
   const committed = useRef(value)
@@ -28,6 +28,15 @@ function SearchBox({ value, onCommit }) {
     committed.current = value
     setText(value)
   }, [value])
+
+  // "Clear filters" also drops text that was typed but not yet sent: otherwise the pending commit
+  // would put the search straight back a moment after the clear.
+  useEffect(() => {
+    if (!clearSignal) return
+    clearTimeout(timer.current)
+    committed.current = ''
+    setText('')
+  }, [clearSignal])
 
   const commit = (raw) => {
     clearTimeout(timer.current)
@@ -49,6 +58,7 @@ function SearchBox({ value, onCommit }) {
     <form role="search" className="pf-search" onSubmit={(e) => { e.preventDefault(); commit(text) }}>
       <span className="pf-search__icon"><SearchIcon /></span>
       <input
+        ref={inputRef}
         type="search"
         className="pf-search__input"
         aria-label={t.pfSearch}
@@ -121,7 +131,7 @@ const withCount = (label, count) => (count == null ? label : `${label} (${count}
  * selects fall back to the API's own value lists; industry and technology have no such list, so
  * they wait for the facets (or stay hidden if the facets never come).
  */
-export default function PortfolioToolbar({ filters, facets, onChange, onClear, filtered, countText }) {
+export default function PortfolioToolbar({ filters, facets, onChange, onClear, filtered, countText, searchRef, clearSignal }) {
   const { t, pick } = useLang()
   const data = facets || null
 
@@ -137,7 +147,12 @@ export default function PortfolioToolbar({ filters, facets, onChange, onClear, f
   return (
     <section aria-label={t.pfSearch}>
       <div className="pf-toolbar">
-        <SearchBox value={filters.q} onCommit={(q) => onChange('q', q, { replace: Boolean(filters.q) })} />
+        <SearchBox
+          value={filters.q}
+          onCommit={(q) => onChange('q', q, { replace: Boolean(filters.q) })}
+          inputRef={searchRef}
+          clearSignal={clearSignal}
+        />
         <CategoryPills value={filters.category} facets={data} onSelect={(v) => onChange('category', v)} />
         <div className="pf-selects">
           <FacetSelect id="pf-industry" label={t.pfIndustry} allLabel={t.pfAllIndustries} value={filters.industry} options={industries} onChange={(v) => onChange('industry', v)} />
