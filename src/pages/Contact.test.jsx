@@ -7,7 +7,7 @@ import { ui } from '../i18n/ui'
 import { api } from '../lib/api'
 import Contact from './Contact'
 
-vi.mock('../lib/api', () => ({ api: { postContact: vi.fn(), getSettings: vi.fn(), getServices: vi.fn() } }))
+vi.mock('../lib/api', () => ({ api: { postContact: vi.fn(), getSettings: vi.fn(), getServices: vi.fn(), getProject: vi.fn() } }))
 
 const t = ui.ar
 const settings = { ...DEFAULT_SETTINGS, email: 'hello@example.com', phone: '+1 555 0100' }
@@ -53,6 +53,7 @@ beforeEach(() => {
   api.getSettings.mockReset().mockResolvedValue(settings)
   api.getServices.mockReset().mockResolvedValue(services)
   api.postContact.mockReset()
+  api.getProject.mockReset().mockRejectedValue(Object.assign(new Error('API 404'), { status: 404 }))
 })
 
 describe('sending the form', () => {
@@ -269,5 +270,51 @@ describe('a link that names a service', () => {
 
     await selectService('تصميم مواقع')
     expect(chosenService()).toContain('تصميم مواقع')
+  })
+})
+
+describe('a link from a project page', () => {
+  const project = { slug: 'falcon-store', name_ar: 'متجر الصقر', name_en: 'Falcon Store' }
+
+  it('opens with the request title naming that project', async () => {
+    api.getProject.mockResolvedValue(project)
+    renderContact('/contact?project=falcon-store')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue(t.contactAboutProject('متجر الصقر')))
+    expect(api.getProject).toHaveBeenCalledWith('falcon-store')
+  })
+
+  it('names the project in the reading language', async () => {
+    localStorage.setItem('ngp.lang', 'en')
+    api.getProject.mockResolvedValue(project)
+    renderContact('/contact?project=falcon-store')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(ui.en.fTitle)).toHaveValue(ui.en.contactAboutProject('Falcon Store')))
+  })
+
+  it('never overwrites a title the visitor has already typed', async () => {
+    let release
+    api.getProject.mockReturnValue(new Promise((resolve) => { release = resolve }))
+    renderContact('/contact?project=falcon-store')
+
+    fireEvent.change(screen.getByPlaceholderText(t.fTitle), { target: { value: 'My own title' } })
+    await act(async () => { release(project) })
+
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('My own title')
+  })
+
+  it('ignores a project that cannot be found, rather than showing an error', async () => {
+    renderContact('/contact?project=does-not-exist')
+
+    await waitFor(() => expect(api.getProject).toHaveBeenCalled())
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('asks for no project when the link names none', async () => {
+    renderContact('/contact')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(api.getProject).not.toHaveBeenCalled()
   })
 })

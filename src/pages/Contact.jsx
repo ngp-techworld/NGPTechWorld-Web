@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useLang } from '../i18n/LanguageContext'
@@ -71,6 +71,29 @@ export default function Contact() {
     // Never overwrite a choice already made — the list can arrive after the visitor has picked.
     if (match) setForm((f) => (f.service_id ? f : { ...f, service_id: String(match.id) }))
   }, [searchParams, services])
+
+  // /contact?project=falcon-store comes from "Discuss a similar project" on a project page: the
+  // request title opens already naming it. Same rules as ?service= — wait for the project to load,
+  // never overwrite a title the visitor has typed, and ignore a slug that leads nowhere.
+  const projectSlug = searchParams.get('project')
+  const [aboutProject, setAboutProject] = useState(null)
+  const prefilled = useRef(false)
+
+  useEffect(() => {
+    if (!projectSlug) return undefined
+    let live = true
+    api.getProject(projectSlug)
+      .then((p) => { if (live && p) setAboutProject(p) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [projectSlug])
+
+  useEffect(() => {
+    const name = aboutProject ? pick(aboutProject, 'name') : ''
+    if (!name || prefilled.current) return
+    prefilled.current = true
+    setForm((f) => (f.title.trim() ? f : { ...f, title: t.contactAboutProject(name) }))
+  }, [aboutProject, pick, t])
 
   // Ticks the post-send cooldown down to 0, one second at a time.
   useEffect(() => {
