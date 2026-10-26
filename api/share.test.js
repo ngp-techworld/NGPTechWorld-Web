@@ -307,3 +307,34 @@ describe('structured data', () => {
     expect(jsonLd(res.body)).toEqual([])
   })
 })
+
+describe('replacement patterns in content', () => {
+  // String.prototype.replace expands $` $' $& $$ in a string replacement: a project called
+  // "Shop $' end" pasted the rest of the shell — the app's script and <div id="app"> — into the head.
+  const hostile = "Shop $' end $& and $` and $$"
+
+  it('serves a project whose text contains $-patterns verbatim, with the shell intact', async () => {
+    mockFetch({ project: { ...PROJECT, name_ar: hostile, name_en: `EN ${hostile}`, short_ar: `short ${hostile}` } })
+    const res = makeResponse()
+    await handler(request('type=project&slug=x'), res)
+
+    expect(res.body.match(/<div id="app">/g)).toHaveLength(1)
+    expect(res.body.match(/\/assets\/index-abc123\.js/g)).toHaveLength(1)
+    // HTML-escaped (& → &amp;) but otherwise exactly as written.
+    expect(res.body).toContain(`<title>${hostile.replace(/&/g, '&amp;')} | NGP TechWorld</title>`)
+    const [data] = jsonLd(res.body)
+    expect(data.name).toBe(hostile)
+    expect(data.alternateName).toBe(`EN ${hostile}`)
+    expect(data.description).toBe(`short ${hostile}`)
+  })
+
+  it('keeps /portfolio intact when one project name in the list contains $-patterns', async () => {
+    mockFetch({ projects: [PROJECT, { slug: 'odd', name_ar: hostile, name_en: '' }] })
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body.match(/<div id="app">/g)).toHaveLength(1)
+    const [list] = jsonLd(res.body)
+    expect(list.itemListElement[1].name).toBe(hostile)
+  })
+})

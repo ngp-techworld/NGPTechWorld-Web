@@ -282,8 +282,11 @@ export default async function handler(request, response) {
     replacement = null
   }
 
+  // A function, not a string, as the replacement: in a string `replace` expands $` $' $& and $$, so a
+  // project named "Shop $' end" would paste the rest of the shell into the head. A function's return
+  // value is inserted as it is.
   const html = replacement
-    ? shell.replace(/<!--og-->[\s\S]*?<!--\/og-->/, `<!--og-->\n${replacement}\n    <!--/og-->`)
+    ? shell.replace(/<!--og-->[\s\S]*?<!--\/og-->/, () => `<!--og-->\n${replacement}\n    <!--/og-->`)
     : shell
 
   response.setHeader('Content-Type', 'text/html; charset=utf-8')
