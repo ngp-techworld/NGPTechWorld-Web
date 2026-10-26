@@ -1,15 +1,17 @@
+import { Suspense, lazy } from 'react'
 import { useParams } from 'react-router-dom'
 import { SearchX } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { canAccessFeature } from '@/app/permissions'
-import { registryProjects, useRefreshRegistry } from '@/features/registry/kit'
+import { registryProjects, useRefreshRegistry } from '@/features/registry/kit/hooks'
 import { useCommon, useLanguage, useStrings } from '@/i18n'
 import { errorText } from '@/lib/errors'
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from '@/ui'
-import { ProjectPage } from './ProjectPage'
 import { projects } from './hooks'
-import registryTabStrings from './registry/strings'
 import strings from './strings'
+
+// the page itself (every tab, the registry kit) is loaded with the first project opened
+const ProjectPage = lazy(() => import('./ProjectPage').then((module) => ({ default: module.ProjectPage })))
 
 /**
  * Loads the project twice, in parallel: the original admin record (`GET /projects/{id}`: the form, the team and link
@@ -19,7 +21,6 @@ import strings from './strings'
 export default function ProjectEdit() {
   const { id } = useParams()
   const t = useStrings(strings)
-  const rt = useStrings(registryTabStrings)
   const c = useCommon()
   const { pickField } = useLanguage()
   const { user } = useAuth()
@@ -63,8 +64,10 @@ export default function ProjectEdit() {
   const record = registry.data ?? null
   // resolves with the saved project so the form can re-base itself on it
   const onSubmit = (payload) => update.mutateAsync({ id: project.id, data: payload })
+
+  // one boundary for the header and the page, so they appear together once the page code has loaded
   return (
-    <>
+    <Suspense fallback={<PageSpinner />}>
       <PageHeader
         title={pickField(project, 'name') || t.editTitle}
         description={
@@ -77,10 +80,10 @@ export default function ProjectEdit() {
       />
       {!record ? (
         <Alert tone="info" className="mb-5">
-          {rt.registryUnavailable}
+          {t.registryUnavailable}
         </Alert>
       ) : null}
       <ProjectPage key={`${project.id}-${record ? 'registry' : 'legacy'}`} project={project} registry={record} onSubmit={onSubmit} saving={update.isPending} />
-    </>
+    </Suspense>
   )
 }

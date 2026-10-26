@@ -1,5 +1,7 @@
+import { lazy } from 'react'
 import { ScrollText } from 'lucide-react'
-import AuditLogPage from './AuditLogPage'
+
+const AuditLogPage = lazy(() => import('./AuditLogPage'))
 
 // Super admins only (app/permissions.js): the trail holds full values of sensitive records.
 export default {

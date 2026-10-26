@@ -11,6 +11,7 @@ export default {
     createTitle: 'إضافة مشروع',
     editTitle: 'تعديل المشروع',
     notFoundTitle: 'المشروع غير موجود',
+    registryUnavailable: 'تعذّر تحميل بيانات سجل المشاريع لهذا المشروع، فتظهر الأقسام العامة القديمة فقط.',
 
     // list
     searchPlaceholder: 'ابحث بالاسم أو العميل أو الرابط المختصر…',
@@ -133,6 +134,7 @@ export default {
     createTitle: 'Add a project',
     editTitle: 'Edit project',
     notFoundTitle: 'Project not found',
+    registryUnavailable: 'The project registry could not be loaded for this project, so only the original public sections are shown.',
 
     searchPlaceholder: 'Search by name, client or slug…',
     colProject: 'Project',

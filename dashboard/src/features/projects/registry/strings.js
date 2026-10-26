@@ -18,7 +18,6 @@ export default {
     tabEnvironments: 'البيئات والخوادم',
     tabDeployment: 'النشر',
     tabData: 'قواعد البيانات والنسخ الاحتياطي',
-    registryUnavailable: 'تعذّر تحميل بيانات سجل المشاريع لهذا المشروع، فتظهر الأقسام العامة القديمة فقط.',
     readOnlyContent: 'للاطلاع فقط: لا تملك صلاحية تعديل محتوى هذا المشروع.',
 
     // overview: public fields
@@ -453,7 +452,6 @@ export default {
     tabEnvironments: 'Environments & servers',
     tabDeployment: 'Deployment',
     tabData: 'Database & backups',
-    registryUnavailable: 'The project registry could not be loaded for this project, so only the original public sections are shown.',
     readOnlyContent: 'Read only: you cannot change this project’s content.',
 
     statusCard: 'Status and platforms',

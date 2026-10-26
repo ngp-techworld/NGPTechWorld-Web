@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { get, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams } from 'react-router-dom'
@@ -7,22 +7,33 @@ import { GroupForm, industriesCatalog, registryStrings } from '@/features/regist
 import { useCommon, useFormat, useStrings } from '@/i18n'
 import { applyServerErrors } from '@/lib/applyServerErrors'
 import { ApiError } from '@/lib/api'
-import { Alert, FormActions, TabPanel } from '@/ui'
+import { Alert, FormActions, PageSpinner, TabPanel } from '@/ui'
 import { GroupedTabs } from './GroupedTabs'
 import { LinksTab } from './LinksTab'
-import { GeneralFields, MediaFields, RegistryPublicFields } from './ProjectFields'
+import { GeneralFields, MediaFields } from './ProjectFields'
+import { RegistryPublicFields } from './RegistryPublicFields'
 import { TeamTab } from './TeamTab'
 import { OVERVIEW_FIELDS, changedOverviewPayload, makeOverviewSchema, toFormErrorKey, toOverviewValues } from './overviewSchema'
 import { MembersCard } from './registry/MembersCard'
-import { NonFunctionalTab } from './registry/NonFunctionalTab'
 import { PublicationCard } from './registry/PublicationCard'
-import { ScreenshotsTab } from './registry/ScreenshotsTab'
 import { administrationFields } from './registry/groups'
 import registryTabStrings from './registry/strings'
-import { AccountsTab, DataTab, DeploymentTab, DocumentsTab, EnvironmentsTab, FeaturesTab, MaintenanceTab, TechStackTab } from './registry/tabs'
 import { useRegistryEnv } from './registry/useRegistryEnv'
 import { TAB_FIELDS, changedPayload, makeProjectSchema, toFormValues } from './schema'
 import strings from './strings'
+
+// The registry tabs are loaded when first opened (most visits only need the Overview): one chunk for tabs.jsx.
+const fromTabs = (name) => lazy(() => import('./registry/tabs').then((module) => ({ default: module[name] })))
+const FeaturesTab = fromTabs('FeaturesTab')
+const TechStackTab = fromTabs('TechStackTab')
+const MaintenanceTab = fromTabs('MaintenanceTab')
+const DocumentsTab = fromTabs('DocumentsTab')
+const AccountsTab = fromTabs('AccountsTab')
+const EnvironmentsTab = fromTabs('EnvironmentsTab')
+const DeploymentTab = fromTabs('DeploymentTab')
+const DataTab = fromTabs('DataTab')
+const ScreenshotsTab = lazy(() => import('./registry/ScreenshotsTab').then((module) => ({ default: module.ScreenshotsTab })))
+const NonFunctionalTab = lazy(() => import('./registry/NonFunctionalTab').then((module) => ({ default: module.NonFunctionalTab })))
 
 const PREFIX = 'project'
 const FORM_TABS = ['overview', 'media']
@@ -188,7 +199,7 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
   const isFormTab = FORM_TABS.includes(tab)
   const panel = (key, children, props = {}) => (
     <TabPanel idPrefix={PREFIX} value={key} active={tab} {...props}>
-      {children}
+      <Suspense fallback={<PageSpinner />}>{children}</Suspense>
     </TabPanel>
   )
   const actions = canEdit ? <FormActions saving={saving} dirty={isDirty} disabled={uploading} cancelTo={hasRegistry ? undefined : '/projects'} sticky /> : null

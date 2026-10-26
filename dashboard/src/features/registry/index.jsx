@@ -1,8 +1,11 @@
+import { lazy } from 'react'
 import { Boxes } from 'lucide-react'
 import ProjectCreate from '@/features/projects/ProjectCreate'
 import ProjectEdit from '@/features/projects/ProjectEdit'
-import RegistryOverview from './RegistryOverview'
-import RegistryProjectList from './RegistryProjectList'
+
+// loaded on first visit (the layout wraps every routed page in <Suspense>)
+const RegistryOverview = lazy(() => import('./RegistryOverview'))
+const RegistryProjectList = lazy(() => import('./RegistryProjectList'))
 
 // The project registry (spec §8): visible to super admins and every registry role (app/permissions.js). The
 // project page itself belongs to the `projects` feature too; it is listed here so a registry-only account (no

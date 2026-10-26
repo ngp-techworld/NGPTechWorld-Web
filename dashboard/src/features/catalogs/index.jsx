@@ -1,5 +1,7 @@
+import { lazy } from 'react'
 import { Tags } from 'lucide-react'
-import CatalogsPage from './CatalogsPage'
+
+const CatalogsPage = lazy(() => import('./CatalogsPage'))
 
 // Technology and industry catalogs: super admins, every registry role and the `projects` section (app/permissions.js).
 export default {
