@@ -5,9 +5,9 @@ import { toHttpUrl } from '../../lib/url'
 import ProjectCover from '../ProjectCover'
 import { ExternalIcon, PlatformGlyph } from './icons'
 
-function Cell({ label, children }) {
+function Cell({ label, children, wide = false }) {
   return (
-    <div className="pf-spec__cell">
+    <div className={'pf-spec__cell' + (wide ? ' pf-spec__cell--wide' : '')}>
       <dt className="pf-spec__label">{label}</dt>
       <dd className="pf-spec__value">{children}</dd>
     </div>
@@ -70,9 +70,10 @@ export default function ProjectHero({ project }) {
         {hasClient && <Cell label={t.pfClient}>{project.client}</Cell>}
         {hasYear && <Cell label={t.pfYear}><span className="font-poppins">{project.year}</span></Cell>}
         {demo && (
-          <Cell label={t.pfDemo}>
-            <a href={demo} target="_blank" rel="noopener noreferrer" className="pf-focus inline-flex items-center gap-1.5" dir="ltr">
-              {hostOf(demo)}
+          <Cell label={t.pfDemo} wide>
+            {/* An address is one word: cut it with an ellipsis rather than break it across lines. */}
+            <a href={demo} target="_blank" rel="noopener noreferrer" className="pf-focus pf-spec__link" dir="ltr" title={demo}>
+              <span className="truncate">{hostOf(demo)}</span>
               <ExternalIcon size={13} />
               <span className="sr-only"> ({t.pfNewTab})</span>
             </a>
