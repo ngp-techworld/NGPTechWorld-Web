@@ -56,7 +56,7 @@ export default function PortfolioCard({ project, headingLevel = 3 }) {
 
         {chips.length > 0 && (
           <ul className="pf-chips" aria-label={t.pfTechnology}>
-            {chips.map((tech) => <li key={tech.slug} className="pf-chip">{tech.name}</li>)}
+            {chips.map((tech) => <li key={tech.slug} className="pf-chip" title={tech.name}>{tech.name}</li>)}
           </ul>
         )}
 

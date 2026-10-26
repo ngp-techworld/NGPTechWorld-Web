@@ -75,3 +75,11 @@ test('renders a related-project item, which has no highlight or demo fields', ()
   expect(screen.getByRole('link', { name: 'متجر الصقر' })).toBeInTheDocument()
   expect(screen.queryByRole('list', { name: t.pfTechnology })).toBeNull()
 })
+
+test('keeps a long technology name whole in the chip title, since the chip itself may cut it short', () => {
+  const long = 'Microsoft.AspNetCore.Authentication.JwtBearer'
+  renderCard({ ...base, technologies: [{ name: long, slug: 'jwt-bearer', category: 'authentication' }] })
+  const chip = within(screen.getByRole('list', { name: t.pfTechnology })).getByRole('listitem')
+  expect(chip).toHaveTextContent(long)
+  expect(chip).toHaveAttribute('title', long)
+})

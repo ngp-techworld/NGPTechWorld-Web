@@ -222,7 +222,7 @@ export function TechStack({ project }) {
             <dt className="pf-stack__cat">{t.techCategories[cat] ?? cat}</dt>
             <dd className="flex flex-wrap gap-2">
               {list.map((tech) => (
-                <Link key={tech.slug} to={`/portfolio?tech=${encodeURIComponent(tech.slug)}`} className="pf-chip">{tech.name}</Link>
+                <Link key={tech.slug} to={`/portfolio?tech=${encodeURIComponent(tech.slug)}`} className="pf-chip" title={tech.name}>{tech.name}</Link>
               ))}
             </dd>
           </div>
