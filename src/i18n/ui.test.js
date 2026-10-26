@@ -43,6 +43,32 @@ describe('the dictionaries agree with each other', () => {
     expect(ui[code].mYears(7)).toContain('7')
     expect(ui[code].cooldownWait(30)).toContain('30')
     expect(ui[code].mOpenLink('GitHub')).toContain('GitHub')
+    expect(ui[code].pfIndex(12, 5)).toContain('12')
+    expect(ui[code].pfIndex(12, 5)).toContain('5')
+    expect(ui[code].pfResults(30)).toContain('30')
+    expect(ui[code].pfCounter(3, 9)).toMatch(/3.*9/)
+    expect(ui[code].pfOpenShot(4)).toContain('4')
+    expect(ui[code].contactAboutProject('Falcon')).toContain('Falcon')
+  })
+
+  // The portfolio reads these by the API's own enum values (Enums.php), so a key missing in one
+  // language shows as a raw `in_development` or a blank chip there and nowhere else.
+  it.each(CODES)('%s labels every platform, development status and technology category', (code) => {
+    for (const map of ['platformLabels', 'devStatus', 'techCategories']) {
+      expect(Object.keys(ui[code][map]).sort(), `${code}.${map}`).toEqual(Object.keys(reference[map]).sort())
+      for (const [key, label] of Object.entries(ui[code][map])) {
+        expect(typeof label === 'string' && label.trim() !== '', `${code}.${map}.${key} is blank`).toBe(true)
+      }
+    }
+  })
+
+  it('counts Arabic projects with the right noun form', () => {
+    expect(ui.ar.pfResults(1)).toBe('مشروع واحد')
+    expect(ui.ar.pfResults(2)).toBe('مشروعان')
+    expect(ui.ar.pfResults(7)).toBe('7 مشاريع')
+    expect(ui.ar.pfResults(12)).toBe('12 مشروعاً')
+    expect(ui.ar.pfResults(100)).toBe('100 مشروع')
+    expect(ui.ar.pfIndex(12, 5)).toBe('12 مشروعاً منشوراً في 5 مجالات')
   })
 })
 
