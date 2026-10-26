@@ -1,0 +1,13 @@
+// The project registry kit, shared by the registry pages and the project page tabs:
+//   import { CollectionTab, GroupForm, registryStrings, … } from '@/features/registry/kit'
+export * from './enums'
+export * from './form'
+export * from './hooks'
+export * from './serverErrors'
+export { AuthImage, apiPathOf, useAuthorizedSrc } from './AuthImage'
+export { CollectionTab, toFormData } from './CollectionTab'
+export { GroupForm } from './GroupForm'
+export { ListInput } from './ListInput'
+export { ObjectListInput } from './ObjectListInput'
+export { FieldGrid, RegistryField } from './RegistryField'
+export { default as registryStrings } from './strings'
