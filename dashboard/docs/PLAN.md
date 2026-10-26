@@ -210,6 +210,7 @@ The router collects all features automatically; **feature agents never edit `src
 Nav groups: `main` (Dashboard, Requests), `content` (Projects, Services, Stats, Testimonials, Partners, FAQ,
 Page content), `system` (Site settings, Users & account). Nav orders: dashboard 10, requests 20, projects 30,
 services 40, stats 50, testimonials 60, partners 70, faqs 80, page-content 90, settings 100, users 110.
+Project registry (Phase 3a): registry 15 (main), catalogs 35 (content), audit-log 115 (system, super admin only).
 
 ### 7.2 UI kit (D0 builds, documents in `docs/UI-KIT.md`)
 Button, IconButton, Input, Textarea, Select, Switch, Field (label/hint/error), **BilingualField** (ar+en pair, right

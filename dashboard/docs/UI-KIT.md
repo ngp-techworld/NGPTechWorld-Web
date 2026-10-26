@@ -335,6 +335,38 @@ controls (`Switch`, `TagsInput`, `ImageUpload`, `GalleryUpload`, `Checkbox`, `Se
 
 `cx` (`@/lib/cx`), `focusRing` and `flipRtl` (`@/ui`), `buttonVariants`, `pageWindow`, `fieldErrorMessage`, `errorMessage`.
 
+### Project registry kit (`import { … } from '@/features/registry/kit'`)
+
+Built on the kit above for the registry screens (project page tabs, catalogs). A **field list** describes a form once —
+values, request body, client checks and controls all come from it (`kit/form.js`):
+
+```js
+const fields = [
+  { name: 'key', type: 'text', label: t.key, required: true, max: 80, pattern: KEY_PATTERN, patternMessage: r.keyFormat, dir: 'ltr' },
+  { name: 'name', type: 'bilingual', label: t.name, required: true, max: 255 },      // name_ar + name_en
+  { name: 'status', type: 'select', label: t.status, nullable: false, options: toOptions(FEATURE_STATUSES, r.featureStatuses) },
+  { name: 'evidence', type: 'lines', label: t.evidence, maxItems: 30, itemMax: 300 },  // one item per line
+  { name: 'tests.exist', type: 'switch', label: t.testsExist },                         // dotted = nested body
+]
+```
+
+Types: `text textarea url number date select boolSelect switch tags lines checkboxes bilingual objectList readonly section`.
+Blank optional values are sent as `null`; a `select` with `nullable: false` is left out when empty; `numeric: true` sends an id.
+
+| Export | Use |
+|---|---|
+| `CollectionTab` | `resource` (e.g. `/registry/projects/7/modules`) `config={ title, itemLabel, fields (array or (ctx, record) => array), defaults, columns(helpers), rowName, rowActions?, filters?, search?, sort?, upload?, reorderable? }` `canWrite` `canCreate` `ctx` `onChanged` `notice` — table + add / edit / view dialog, delete after confirmation, partial updates, multipart uploads, a 422 on the fields |
+| `RecordDialog` | the same dialog alone (non-functional cards, screenshots) |
+| `GroupForm` | `projectId` `group` `values` `fields` `canWrite` `title` — one operations group, `PUT …/operations/{group}` with only the changed fields |
+| `localizeErrors(err, r)` / `actionErrorText(err, r, c)` | the vault guard's "looks like a secret" (and other known registry messages) in the UI language; text for a refused delete / inline change |
+| `AuthImage` / `useAuthorizedSrc(url)` | an `<img>` for a private stream (`/api/admin/registry/files/…`), fetched with the bearer token |
+| `registryProjects`, `useProjectAction(id)`, `useRefreshRegistry(id)`, `technologiesCatalog`, `industriesCatalog` | data hooks |
+| `registryStrings` + `enums.js` | labels and value lists of every registry enum (mirrors `App\Registry\Enums`) |
+
+The project page (`features/projects/ProjectPage.jsx`) shows the tabs `abilities` (from `GET /registry/projects/{id}`)
+let the caller read — the others are absent — and builds each registry tab from `projects/registry/collections.jsx` and
+`groups.js`.
+
 ## 5. RTL rules
 
 The app is Arabic-first: `<html dir="rtl">` unless the user toggled English; `LanguageContext` keeps `lang/dir` in sync.
