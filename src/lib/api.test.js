@@ -39,3 +39,43 @@ describe('api.getContent', () => {
     await expect(api.getContent()).rejects.toBeInstanceOf(TypeError)
   })
 })
+
+describe('api.getPortfolio', () => {
+  test('GETs /portfolio with only the filters that are set, and returns data and meta', async () => {
+    const body = { data: [{ slug: 'a' }], meta: { current_page: 2, last_page: 3, total: 30 }, links: {} }
+    const fetchMock = vi.fn().mockResolvedValue(respond(200, body))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api.getPortfolio({ category: 'web', search: '', industry: undefined, technology: 'react native', page: 2, per_page: 12 }))
+      .resolves.toEqual({ data: body.data, meta: body.meta })
+
+    const url = new URL(fetchMock.mock.calls[0][0], 'http://x.test')
+    expect(url.pathname).toMatch(/\/portfolio$/)
+    expect(Object.fromEntries(url.searchParams)).toEqual({ category: 'web', technology: 'react native', page: '2', per_page: '12' })
+  })
+
+  test('GETs /portfolio without a query string when nothing is set', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respond(200, { data: [], meta: { current_page: 1, last_page: 1, total: 0 } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.getPortfolio()
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/portfolio$/)
+  })
+
+  test('rejects on an HTTP error, keeping the status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond(422, { errors: { category: ['bad'] } })))
+    await expect(api.getPortfolio({ category: 'games' })).rejects.toMatchObject({ status: 422 })
+  })
+})
+
+describe('api.getPortfolioFacets', () => {
+  test('GETs /portfolio/facets and returns the unwrapped data', async () => {
+    const data = { totals: { projects: 3, categories: 2 }, categories: [], industries: [], technologies: [], platforms: [], statuses: [] }
+    const fetchMock = vi.fn().mockResolvedValue(respond(200, { data }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api.getPortfolioFacets()).resolves.toEqual(data)
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/portfolio\/facets$/)
+  })
+})
