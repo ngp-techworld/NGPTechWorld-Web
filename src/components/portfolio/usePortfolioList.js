@@ -40,7 +40,12 @@ export function usePortfolioList(params) {
       })
   }, [params])
 
-  useEffect(() => { request(1) }, [request])
+  // Taking a ticket on the way out makes every answer still in flight stale, so nothing writes to a
+  // list that is gone (or, under StrictMode's double run, to the first of the two).
+  useEffect(() => {
+    request(1)
+    return () => { ticket.current += 1 }
+  }, [request])
 
   const page = state.meta?.current_page ?? 1
   const lastPage = state.meta?.last_page ?? 1

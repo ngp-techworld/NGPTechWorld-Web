@@ -176,6 +176,21 @@ describe('filters live in the URL', () => {
     expect(listCalls().some((p) => p.search)).toBe(false)
   })
 
+  test('ignores values the API would reject, instead of showing an error that Retry cannot fix', async () => {
+    // The API answers 422 for a category, platform or status outside its enums.
+    renderAt('/portfolio?category=games&platform=amiga&status=paused')
+
+    await within(results()).findByRole('link', { name: /مشروع alpha/ })
+    expect(lastListCall()).toEqual({ page: 1, per_page: 12 })
+    expect(screen.queryByText(t.loadError)).toBeNull()
+    expect(screen.queryByRole('button', { name: t.pfClear })).toBeNull()
+  })
+
+  test('cuts a search from the URL to the 100 characters the API accepts', async () => {
+    renderAt(`/portfolio?q=${'a'.repeat(150)}`)
+    await waitFor(() => expect(lastListCall()?.search).toBe('a'.repeat(100)))
+  })
+
   test('there is nothing to clear when no filter is set', async () => {
     renderAt()
     await within(results()).findByRole('link', { name: /مشروع alpha/ })
@@ -313,6 +328,44 @@ describe('the results', () => {
 
     expect(within(results()).getByRole('link', { name: /مشروع phone/ })).toBeInTheDocument()
     expect(within(results()).queryByRole('link', { name: /مشروع site/ })).toBeNull()
+  })
+
+  test('a "load more" answer that lands after the filters changed never joins the new list', async () => {
+    const second = deferred()
+    api.getPortfolio.mockImplementation((params) => {
+      if (params.featured) return Promise.resolve(page([]))
+      if (params.category === 'mobile') return Promise.resolve(page([card('phone', { category: 'mobile' })]))
+      return params.page === 2 ? second.promise : Promise.resolve(page([card('alpha')], 1, 2, 2))
+    })
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: t.pfLoadMore }))
+    fireEvent.click(screen.getByRole('button', { name: /^موبايل/ }))
+    await within(results()).findByRole('link', { name: /مشروع phone/ })
+
+    await act(async () => second.resolve(page([card('gamma')], 2, 2, 2)))
+
+    expect(within(results()).getAllByRole('link').map((a) => a.textContent)).toEqual(['مشروع phone'])
+  })
+
+  test('an answer that arrives after the page has gone is dropped quietly', async () => {
+    const pending = deferred()
+    api.getPortfolio.mockImplementation((params) => (params.featured ? Promise.resolve(page([])) : pending.promise))
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { unmount } = renderAt()
+
+    unmount()
+    await act(async () => pending.resolve(page([card('alpha')])))
+
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
+
+  test('survives facets that are missing some of their lists', async () => {
+    api.getPortfolioFacets.mockResolvedValue({ totals: { projects: 2, categories: 1 } })
+    renderAt()
+
+    expect(await within(results()).findByRole('link', { name: /مشروع alpha/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: new RegExp(`^${t.cats[0].l}`) })).toBeInTheDocument()
   })
 
   test('say so, and offer to clear, when no project matches', async () => {

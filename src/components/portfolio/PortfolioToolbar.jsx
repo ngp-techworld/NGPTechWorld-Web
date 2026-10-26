@@ -75,7 +75,7 @@ function SearchBox({ value, onCommit, inputRef, clearSignal }) {
 /** Category pills — the site's existing .pill style, with the facet count beside each label. */
 function CategoryPills({ value, facets, onSelect }) {
   const { t } = useLang()
-  const counts = facets ? new Map(facets.categories.map((c) => [c.key, c.count])) : null
+  const counts = Array.isArray(facets?.categories) ? new Map(facets.categories.map((c) => [c.key, c.count])) : null
   // Only categories that have something published, once the counts are known — plus the one in
   // the URL, so a shared link to an emptied category still shows what it is filtering by.
   const options = t.cats.filter((c) => c.v === 'all' || !counts || counts.has(c.v) || c.v === value)
@@ -135,13 +135,15 @@ export default function PortfolioToolbar({ filters, facets, onChange, onClear, f
   const { t, pick } = useLang()
   const data = facets || null
 
-  const industries = (data?.industries ?? []).map((i) => ({ value: i.key, label: withCount(pick(i, 'name') || i.key, i.count) }))
-  const technologies = (data?.technologies ?? []).map((x) => ({ value: x.slug, label: withCount(x.name, x.count) }))
-  const platforms = data
-    ? data.platforms.map((p) => ({ value: p.key, label: withCount(t.platformLabels[p.key] ?? p.key, p.count) }))
+  // Any list the facets lack is treated as not known yet, never trusted to be there.
+  const facetList = (key) => (Array.isArray(data?.[key]) ? data[key] : null)
+  const industries = (facetList('industries') ?? []).map((i) => ({ value: i.key, label: withCount(pick(i, 'name') || i.key, i.count) }))
+  const technologies = (facetList('technologies') ?? []).map((x) => ({ value: x.slug, label: withCount(x.name, x.count) }))
+  const platforms = facetList('platforms')
+    ? facetList('platforms').map((p) => ({ value: p.key, label: withCount(t.platformLabels[p.key] ?? p.key, p.count) }))
     : PLATFORMS.map((p) => ({ value: p, label: t.platformLabels[p] }))
-  const statuses = data
-    ? data.statuses.map((s) => ({ value: s.key, label: withCount(t.devStatus[s.key] ?? s.key, s.count) }))
+  const statuses = facetList('statuses')
+    ? facetList('statuses').map((s) => ({ value: s.key, label: withCount(t.devStatus[s.key] ?? s.key, s.count) }))
     : PUBLIC_STATUSES.map((s) => ({ value: s, label: t.devStatus[s] }))
 
   return (

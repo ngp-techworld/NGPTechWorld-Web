@@ -31,10 +31,23 @@ export const TECH_CATEGORIES = [
   'tooling', 'other',
 ]
 
-/** Every filter in the URL, as strings ('' when absent). */
+/** Mirrors Enums::CATEGORIES. */
+export const CATEGORIES = ['web', 'mobile', 'ai', 'design', 'erp']
+
+// What PortfolioController::index validates. A value outside these makes the API answer 422, and a
+// link carrying one (?category=games, a stale ?status=paused) would show an error that "Try again"
+// can never clear — so such a value is treated as not set at all.
+const ALLOWED = { category: CATEGORIES, platform: PLATFORMS, status: PUBLIC_STATUSES }
+const MAX_LENGTH = { q: 100, industry: 60, tech: 100 }
+
+/** Every filter in the URL, as strings ('' when absent or not one the API accepts). */
 export function readFilters(searchParams) {
   const filters = {}
-  for (const key of Object.keys(FILTER_PARAMS)) filters[key] = searchParams.get(key) ?? ''
+  for (const key of Object.keys(FILTER_PARAMS)) {
+    const raw = searchParams.get(key) ?? ''
+    if (ALLOWED[key]) filters[key] = ALLOWED[key].includes(raw) ? raw : ''
+    else filters[key] = MAX_LENGTH[key] ? raw.slice(0, MAX_LENGTH[key]) : raw
+  }
   return filters
 }
 
