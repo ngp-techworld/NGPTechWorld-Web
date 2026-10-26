@@ -10,7 +10,12 @@
  * for tags describing whatever the URL actually points at. The response is still the ordinary app
  * shell, so a human following the link gets the SPA exactly as before; only the head differs.
  *
- * Wired up by vercel.json, which rewrites /team/:slug and /portfolio/:slug here.
+ * Wired up by vercel.json, which rewrites /team/:slug and /portfolio/:slug here, and the fixed
+ * pages (/about, /services, /portfolio, /contact, /team).
+ *
+ * Project pages also carry JSON-LD (a SoftwareApplication, or a CreativeWork for design work), and
+ * /portfolio an ItemList of the published projects, so search engines read what each page is about
+ * without running the app either.
  */
 
 const SITE = (process.env.SITE_URL || 'https://www.ngptechworld.com').replace(/\/+$/, '')
@@ -25,6 +30,24 @@ const esc = (value) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 
+/**
+ * JSON for inside a <script> element. JSON.stringify alone is not enough: a project named
+ * `</script><script>…` would close the element and run whatever follows. `<`, `>` and `&` are
+ * written as \u escapes — still the same string to a JSON parser, but never markup to an HTML one —
+ * and so are the two line separators that JavaScript (unlike JSON) treats as line breaks.
+ */
+const jsonForScript = (data) =>
+  JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+
+const ldScript = (data) => `<script type="application/ld+json">${jsonForScript(data)}</script>`
+
+const ORGANIZATION = { '@type': 'Organization', name: 'NGP TechWorld', url: SITE }
+
 /** Collapse whitespace and cut on a word boundary: previews truncate hard at ~200 characters. */
 function summarise(text, max = 190) {
   const clean = String(text ?? '').replace(/\s+/g, ' ').trim()
@@ -36,7 +59,7 @@ function summarise(text, max = 190) {
 /** Uploaded media comes back from the API with whatever scheme it was generated with. */
 const https = (url) => (url ? String(url).replace(/^http:\/\//i, 'https://') : null)
 
-function tags({ title, description, url, image, type = 'website', imageAlt }) {
+function tags({ title, description, url, image, type = 'website', imageAlt, jsonLd = null }) {
   const picture = https(image) || FALLBACK_IMAGE
   // A portrait or a project shot is not 1.91:1, so width/height are declared only for the shared
   // cover — claiming the wrong dimensions makes some clients letterbox or refuse the image.
@@ -64,6 +87,7 @@ function tags({ title, description, url, image, type = 'website', imageAlt }) {
     <meta name="twitter:title" content="${esc(title)}" />
     <meta name="twitter:description" content="${esc(description)}" />
     <meta name="twitter:image" content="${esc(picture)}" />
+    ${jsonLd ? ldScript(jsonLd) : ''}
   `.trim()
 }
 
@@ -114,11 +138,34 @@ const PAGES = {
   },
 }
 
+/** The published projects as a schema.org ItemList, or null when the list cannot be had. */
+async function projectList(url) {
+  const projects = await fetchJson('/projects').catch(() => null)
+  if (!Array.isArray(projects) || projects.length === 0) return null
+  // Enough to describe the page; a crawler that wants every project has the sitemap.
+  const shown = projects.filter((p) => p?.slug).slice(0, 50)
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    url,
+    numberOfItems: shown.length,
+    itemListElement: shown.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${SITE}/portfolio/${encodeURIComponent(p.slug)}`,
+      name: pick(p, 'name'),
+    })),
+  }
+}
+
 async function describePage(name, url) {
   const page = PAGES[name]
   if (!page) return null
 
-  const content = await fetchJson('/content').catch(() => null)
+  const [content, list] = await Promise.all([
+    fetchJson('/content').catch(() => null),
+    name === 'portfolio' ? projectList(url).catch(() => null) : null,
+  ])
   const texts = content?.texts ?? {}
   // The Arabic wording, matching the language the shell itself is served in.
   const fromDashboard = (key) => (typeof texts?.[key]?.ar === 'string' ? texts[key].ar.trim() : '')
@@ -133,6 +180,7 @@ async function describePage(name, url) {
     title: `${heading} | NGP TechWorld`,
     description: summarise(description),
     url,
+    jsonLd: list ? { ...list, name: heading } : null,
   })
 }
 
@@ -155,6 +203,41 @@ async function describeTeamMember(slug, url) {
   })
 }
 
+// The project's category as a schema.org application category. Design work is not software, so it
+// is described as a CreativeWork instead and gets neither this nor an operating system.
+const APPLICATION_CATEGORIES = {
+  web: 'WebApplication',
+  mobile: 'MobileApplication',
+  erp: 'BusinessApplication',
+  ai: 'BusinessApplication',
+}
+
+// The registry's platforms that are operating systems; `api`, `cli` and `other` are not.
+const OPERATING_SYSTEMS = { web: 'Web', android: 'Android', ios: 'iOS', windows: 'Windows', macos: 'macOS', linux: 'Linux' }
+
+function projectJsonLd(project, url, description) {
+  const software = project.category !== 'design'
+  const systems = [...new Set((project.platforms ?? []).map((p) => OPERATING_SYSTEMS[p]).filter(Boolean))]
+  const name = pick(project, 'name')
+  const english = project.name_en && project.name_en !== name ? project.name_en : null
+
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': software ? 'SoftwareApplication' : 'CreativeWork',
+    name,
+    ...(english ? { alternateName: english } : {}),
+    ...(description ? { description } : {}),
+    ...(project.cover_image ? { image: https(project.cover_image) } : {}),
+    url,
+    author: ORGANIZATION,
+  }
+  if (software) {
+    if (APPLICATION_CATEGORIES[project.category]) data.applicationCategory = APPLICATION_CATEGORIES[project.category]
+    if (systems.length) data.operatingSystem = systems.join(', ')
+  }
+  return data
+}
+
 async function describeProject(slug, url) {
   const project = await fetchJson(`/projects/${encodeURIComponent(slug)}`)
   if (!project) return null
@@ -163,13 +246,16 @@ async function describeProject(slug, url) {
   const short = pick(project, 'short')
   const description = pick(project, 'description')
 
+  const summary = summarise(short || description)
+
   return tags({
     type: 'article',
     title: `${name} | NGP TechWorld`,
-    description: summarise(short || description),
+    description: summary,
     url,
     image: project.cover_image,
     imageAlt: name,
+    jsonLd: projectJsonLd(project, url, summary),
   })
 }
 
