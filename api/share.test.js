@@ -338,3 +338,18 @@ describe('replacement patterns in content', () => {
     expect(list.itemListElement[1].name).toBe(hostile)
   })
 })
+
+describe('line separators in content', () => {
+  it('escapes U+2028 and U+2029 inside the JSON-LD, so the script stays one valid statement', async () => {
+    // JSON allows these two characters raw; older JavaScript parsers treat them as line breaks.
+    const name = 'Line\u2028break\u2029here'
+    mockFetch({ project: { ...PROJECT, name_ar: name } })
+    const res = makeResponse()
+    await handler(request('type=project&slug=x'), res)
+
+    const script = res.body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]
+    expect(script).not.toMatch(/[\u2028\u2029]/)
+    expect(script).toContain('\\' + 'u2028') // written as the six characters \u2028
+    expect(JSON.parse(script).name).toBe(name)
+  })
+})
