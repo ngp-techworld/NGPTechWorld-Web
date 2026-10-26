@@ -79,3 +79,14 @@ describe('api.getPortfolioFacets', () => {
     expect(fetchMock.mock.calls[0][0]).toMatch(/\/portfolio\/facets$/)
   })
 })
+
+describe('api.getProject', () => {
+  test('encodes the slug, so a crafted value cannot change the path or add a query', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respond(200, { data: { slug: 'x' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.getProject('../team/sara?x=1')
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/projects\/\.\.%2Fteam%2Fsara%3Fx%3D1$/)
+  })
+})

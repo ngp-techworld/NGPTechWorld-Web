@@ -30,7 +30,7 @@ export const api = {
   getServices: async () => (await req('/services')).data,
   getProjects: async (category) =>
     (await req(`/projects${category && category !== 'all' ? `?category=${category}` : ''}`)).data,
-  getProject: async (slug) => (await req(`/projects/${slug}`)).data,
+  getProject: async (slug) => (await req(`/projects/${encodeURIComponent(slug)}`)).data,
   // The /portfolio page: searched, filtered and paged on the server. Takes the API's own parameter
   // names (search, category, industry, technology, platform, status, featured, page, per_page) and
   // answers `{ data, meta }`, since "load more" needs meta.current_page / meta.last_page.

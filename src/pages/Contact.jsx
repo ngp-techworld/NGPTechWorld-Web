@@ -16,6 +16,19 @@ const inputStyle = { background: 'rgba(26,15,38,.6)' }
 const EMPTY_FORM = { service_id: '', name: '', phone: '', email: '', title: '', description: '' }
 const COOLDOWN_SECONDS = 60
 
+// The dashboard's own rule for a project slug (Admin\ProjectController).
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+// StoreContactRequest caps `title` at 150; a project name may be up to 255.
+const TITLE_MAX = 150
+
+/** "A project like «name»", with the name shortened (…) so the whole title fits what the server accepts. */
+function aboutProjectTitle(t, name) {
+  const full = t.contactAboutProject(name)
+  if (full.length <= TITLE_MAX) return full
+  const room = TITLE_MAX - t.contactAboutProject('').length - 1
+  return t.contactAboutProject(`${name.slice(0, Math.max(room, 0)).trimEnd()}…`)
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^[+\d][\d\s().-]*$/
 const phoneDigitCount = (v) => (v.match(/\d/g) || []).length
@@ -75,7 +88,9 @@ export default function Contact() {
   // /contact?project=falcon-store comes from "Discuss a similar project" on a project page: the
   // request title opens already naming it. Same rules as ?service= — wait for the project to load,
   // never overwrite a title the visitor has typed, and ignore a slug that leads nowhere.
-  const projectSlug = searchParams.get('project')
+  // Only a real slug (the shape the dashboard enforces) is looked up: anything else, such as
+  // "../team/someone", could otherwise steer the request to a different endpoint.
+  const projectSlug = SLUG_RE.test(searchParams.get('project') ?? '') ? searchParams.get('project') : null
   const [aboutProject, setAboutProject] = useState(null)
   const prefilled = useRef(false)
 
@@ -92,7 +107,7 @@ export default function Contact() {
     const name = aboutProject ? pick(aboutProject, 'name') : ''
     if (!name || prefilled.current) return
     prefilled.current = true
-    setForm((f) => (f.title.trim() ? f : { ...f, title: t.contactAboutProject(name) }))
+    setForm((f) => (f.title.trim() ? f : { ...f, title: aboutProjectTitle(t, name) }))
   }, [aboutProject, pick, t])
 
   // Ticks the post-send cooldown down to 0, one second at a time.

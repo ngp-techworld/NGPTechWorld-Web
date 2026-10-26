@@ -318,3 +318,26 @@ describe('a link from a project page', () => {
     expect(api.getProject).not.toHaveBeenCalled()
   })
 })
+
+describe('a project link that is not a slug', () => {
+  it('asks for nothing when ?project= is not a slug', async () => {
+    // A slug is lower-case words joined by hyphens; anything else ("../team/sara") is not a project.
+    renderContact('/contact?project=../team/sara-ahmad')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(api.getProject).not.toHaveBeenCalled()
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('')
+  })
+
+  it('keeps the prefilled title within the 150 characters the server accepts', async () => {
+    const long = 'م'.repeat(240)
+    api.getProject.mockResolvedValue({ slug: 'long-name', name_ar: long, name_en: 'Long' })
+    renderContact('/contact?project=long-name')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(t.fTitle).value).not.toBe(''))
+    const title = screen.getByPlaceholderText(t.fTitle).value
+    expect(title.length).toBeLessThanOrEqual(150)
+    expect(title).toContain('…')
+    expect(title.startsWith(t.contactAboutProject('').split('«')[0])).toBe(true)
+  })
+})
