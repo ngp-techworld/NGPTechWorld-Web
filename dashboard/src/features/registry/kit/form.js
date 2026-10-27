@@ -4,7 +4,9 @@
 //
 // A field: { name, type, label, hint?, required?, max?, pattern?, patternMessage?, min?, maxValue?, maxItems?, itemMax?,
 //            itemPattern?, nullable?, numeric? (a select of ids), defaultValue?, options?, fields? (objectList items),
-//            rows?, multiline?, dir?, span? }
+//            rows?, multiline?, dir?, span?, control? }
+// `control({ value, onChange, onBlur, inputRef, label, hint, error, required, disabled, ctx, className })` draws a field
+// with a component of its own (the member picker); its `type` still decides the conversions and the checks.
 // Types: text · textarea · url · number · date · select · boolSelect · switch · tags · lines · checkboxes ·
 //        bilingual (name → name_ar / name_en) · objectList (list of objects, see `fields`) · readonly · section.
 // `name` may be a dotted path ("tests.exist"): the body then nests it (`{ tests: { exist } }`).

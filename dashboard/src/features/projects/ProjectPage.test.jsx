@@ -284,47 +284,91 @@ describe('project page: members', () => {
     { id: 8, name: 'Huda', email: 'huda@ngptechworld.com', registry_role: null },
   ]
 
+  // `GET registry/users`: name or email contains `search`, at most `per_page` (the API refuses more than 50)
+  const searchAccounts = (rows) => ({ query }) => {
+    if (Number(query.per_page) > 50) return validationError({ per_page: ['The per page field must be between 1 and 50.'] })
+    const term = (query.search ?? '').toLowerCase()
+    const found = rows.filter((account) => account.registry_role && `${account.name} ${account.email}`.toLowerCase().includes(term))
+    return paginated(found.slice(0, Number(query.per_page)), { perPage: Number(query.per_page), total: found.length })
+  }
+  const picker = () => within(within(screen.getByRole('dialog')).getByRole('radiogroup', { name: 'Matching accounts' }))
+
   it('lets a super admin add an account that has a registry role and is not a member yet', async () => {
     const { api, user } = renderPage({
       extra: {
         'GET /registry/projects/:id/members': () => paginated(members),
-        'GET /users': () => paginated(accounts),
+        'GET /registry/users': searchAccounts(accounts),
         'POST /registry/projects/:id/members': ({ body }) => reply(201, { data: { id: 2, project_id: 7, ...body, user: accounts[1] } }),
       },
     })
     expect(await (await findRegion('Project members')).findByText('layla@ngptechworld.com')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Add member' }))
+    await user.click(await screen.findByRole('button', { name: 'Add member' }))
     const dialog = within(screen.getByRole('dialog'))
-    const options = [...dialog.getByLabelText(/^Account/).options].map((option) => option.textContent)
-    expect(options).toEqual(['Choose…', 'Omar · omar@ngptechworld.com · Developer'])
-    await user.selectOptions(dialog.getByLabelText(/^Account/), '6')
+    // the member is listed but cannot be picked again; an account without a registry role is not listed
+    expect(await picker().findByRole('radio', { name: /Omar/ })).toBeEnabled()
+    expect(picker().getByRole('radio', { name: /Layla.*Already a member/ })).toBeDisabled()
+    expect(picker().queryByRole('radio', { name: /Huda/ })).not.toBeInTheDocument()
+    await user.click(picker().getByRole('radio', { name: /Omar/ }))
+    expect(dialog.getByText('Selected: Omar')).toBeInTheDocument()
     await user.selectOptions(dialog.getByLabelText('Role on the project'), 'tech_lead')
     await user.click(dialog.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(api.calls('POST', '/registry/projects/7/members')).toHaveLength(1))
     expect(api.calls('POST', '/registry/projects/7/members')[0].body).toEqual({ user_id: 6, member_role: 'tech_lead', responsibilities: null })
+    expect(api.calls('GET', '/registry/users').every((call) => Number(call.query.per_page) <= 50)).toBe(true)
   })
 
-  it('lets a manager pick from the registry accounts (registry/users), without the super-admin users list', async () => {
+  it('searches as you type, 20 accounts at a time, and says when more match than are shown', async () => {
+    const many = Array.from({ length: 30 }, (_, index) => ({ id: 100 + index, name: `Dev ${index + 1}`, email: `dev${index + 1}@ngptechworld.com`, registry_role: 'developer' }))
     const { api, user } = renderPage({
       abilities: ABILITIES.managerMember,
       authUser: manager,
       extra: {
         'GET /registry/projects/:id/members': () => paginated(members),
-        'GET /registry/users': () => paginated(accounts.filter((account) => account.registry_role)),
-        'POST /registry/projects/:id/members': ({ body }) => reply(201, { data: { id: 2, project_id: 7, ...body, user: accounts[1] } }),
+        'GET /registry/users': searchAccounts([...accounts, ...many]),
+        'POST /registry/projects/:id/members': ({ body }) => reply(201, { data: { id: 2, project_id: 7, ...body, user: many[11] } }),
       },
     })
     await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
 
     await user.click(await screen.findByRole('button', { name: 'Add member' }))
-    await user.selectOptions(within(screen.getByRole('dialog')).getByLabelText(/^Account/), '6')
+    expect(await picker().findAllByRole('radio')).toHaveLength(20)
+    expect(screen.getByText('Showing 20 of 32. Type part of the name or email to narrow the list.')).toBeInTheDocument()
+    expect(api.calls('GET', '/registry/users')[0].query).toEqual({ per_page: '20' })
+
+    const before = api.calls('GET', '/registry/users').length
+    await user.type(within(screen.getByRole('dialog')).getByRole('searchbox', { name: 'Search accounts' }), 'dev 12')
+    await waitFor(() => expect(picker().getAllByRole('radio')).toHaveLength(1))
+    // debounced: one request for the whole word, not one per letter
+    expect(api.calls('GET', '/registry/users').slice(before).map((call) => call.query)).toEqual([{ search: 'dev 12', per_page: '20' }])
+    await user.click(picker().getByRole('radio', { name: /Dev 12/ }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(api.calls('POST', '/registry/projects/7/members')).toHaveLength(1))
-    expect(api.calls('GET', '/registry/users')[0].query).toEqual({ per_page: '100' })
+    expect(api.calls('POST', '/registry/projects/7/members')[0].body).toMatchObject({ user_id: 111 })
     expect(api.calls('GET', '/users')).toHaveLength(0)
+  })
+
+  it('asks to pick an account before saving', async () => {
+    const { api, user } = renderPage({ extra: { 'GET /registry/projects/:id/members': () => paginated(members), 'GET /registry/users': searchAccounts(accounts) } })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    await user.click(await screen.findByRole('button', { name: 'Add member' }))
+    await picker().findByRole('radio', { name: /Omar/ })
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+
+    expect(await within(screen.getByRole('dialog')).findByText('This field is required')).toBeInTheDocument()
+    expect(api.calls('POST')).toHaveLength(0)
+  })
+
+  it('falls back to the users list for a super admin on a backend without registry/users', async () => {
+    const { user } = renderPage({ extra: { 'GET /registry/projects/:id/members': () => paginated(members), 'GET /users': () => paginated(accounts) } })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    await user.click(await screen.findByRole('button', { name: 'Add member' }))
+    expect(await picker().findByRole('radio', { name: /Omar/ })).toBeEnabled()
+    expect(picker().queryByRole('radio', { name: /Huda/ })).not.toBeInTheDocument()
   })
 
   it('says why a member cannot be added when the account list is refused, and still lets members be changed', async () => {
@@ -341,6 +385,28 @@ describe('project page: members', () => {
     expect(await screen.findByText(/The list of accounts could not be loaded.*Turn on two-step sign-in/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument()
     expect(region('Project members').getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('hides the picker with a hint when the account list is refused for the role', async () => {
+    renderPage({
+      abilities: ABILITIES.managerMember,
+      authUser: manager,
+      extra: { 'GET /registry/projects/:id/members': () => paginated(members), 'GET /registry/users': () => reply(403, { message: 'This action is unauthorized.' }) },
+    })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    expect(await screen.findByText(/Super admins and registry managers can add members/)).toBeInTheDocument()
+    expect(screen.queryByText(/highlighted fields/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument()
+  })
+
+  it('still offers Add while no account has a registry role, and says how to give one', async () => {
+    const { user } = renderPage({ extra: { 'GET /registry/projects/:id/members': () => paginated(members), 'GET /registry/users': () => paginated([]) } })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    expect(await region('Project members').findByText(/Give the account a role on the Users page first/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add member' }))
+    expect(await within(screen.getByRole('dialog')).findByText(/Give the account a role on the Users page first/)).toBeInTheDocument()
   })
 
   it('warns a manager who removes themselves that they lose access', async () => {

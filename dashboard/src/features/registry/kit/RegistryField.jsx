@@ -28,6 +28,20 @@ export function RegistryField({ field, form, ctx, disabled = false }) {
   const hint = field.hint ?? (field.type === 'lines' ? r.linesHint : undefined)
   const span = fieldSpan(field)
 
+  // a control of its own (e.g. the member picker's search-as-you-type list): the field's type still decides the value
+  // conversions and the checks, `control` only draws it
+  if (field.control) {
+    return (
+      <Controller
+        name={field.name}
+        control={control}
+        render={({ field: rhf }) =>
+          field.control({ value: rhf.value, onChange: rhf.onChange, onBlur: rhf.onBlur, inputRef: rhf.ref, label: field.label, hint, error, required: field.required, disabled, ctx, className: span })
+        }
+      />
+    )
+  }
+
   switch (field.type) {
     case 'section':
       return (

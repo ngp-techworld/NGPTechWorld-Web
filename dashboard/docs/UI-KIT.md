@@ -359,6 +359,9 @@ const fields = [
 
 Types: `text textarea url number date select boolSelect switch tags lines checkboxes bilingual objectList readonly section`.
 Blank optional values are sent as `null`; a `select` with `nullable: false` is left out when empty; `numeric: true` sends an id.
+`control: (props) => <Component {...props} />` draws a field with a component of its own while its `type` keeps the
+conversions and checks — the member picker (`projects/registry/AccountPicker.jsx`) is a `select` drawn as a
+search-as-you-type radio list over `GET registry/users?search=&per_page=20` (the API refuses `per_page` above 50).
 
 | Export | Use |
 |---|---|

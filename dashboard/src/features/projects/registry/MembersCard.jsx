@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Users } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { CollectionTab, MEMBER_ROLES, registryPath, toOptions, useRefreshRegistry } from '@/features/registry/kit'
-import { api } from '@/lib/api'
-import { errorText } from '@/lib/errors'
 import { useCrudHooks } from '@/lib/crud'
+import { isMfaRequired } from '@/lib/errors'
 import { Alert, Badge } from '@/ui'
+import { AccountPicker, useAccountSearch } from './AccountPicker'
 import { useRegistryEnv } from './useRegistryEnv'
 
 const MEMBERS_LIST = { per_page: 100, page: 1, sort: 'created_at', dir: 'asc' }
@@ -15,30 +14,6 @@ const MEMBERS_LIST = { per_page: 100, page: 1, sort: 'created_at', dir: 'asc' }
 export function useProjectMembers(projectId, enabled = true) {
   const hooks = useCrudHooks(`${registryPath(projectId)}/members`)
   return hooks.useList(MEMBERS_LIST, { enabled }).rows
-}
-
-const ACCOUNTS = { per_page: 100 }
-
-/**
- * Accounts that may become members: those with a registry role, from `GET registry/users` (API contract B2: super
- * admins and registry managers, behind the two-step sign-in gate). On a backend without it (404) a super admin falls
- * back to `GET /users`, filtered to the accounts that have a registry role.
- */
-function useEligibleAccounts(enabled, isSuperAdmin) {
-  return useQuery({
-    queryKey: ['registry', 'users', ACCOUNTS],
-    queryFn: async ({ signal }) => {
-      try {
-        return (await api.get('/registry/users', ACCOUNTS, { signal })).data ?? []
-      } catch (err) {
-        if (err.status !== 404 || !isSuperAdmin) throw err
-        return (await api.get('/users', { per_page: 200, sort: 'name', dir: 'asc' }, { signal })).data ?? []
-      }
-    },
-    enabled,
-    retry: false,
-    select: (accounts) => accounts.filter((account) => account.registry_role),
-  })
 }
 
 const membersConfig = ({ t, r }, me) => ({
@@ -63,10 +38,9 @@ const membersConfig = ({ t, r }, me) => ({
           hint: t.memberAccountHint,
           required: true,
           numeric: true,
-          options: (ctx?.accounts ?? []).map((account) => ({
-            value: String(account.id),
-            label: `${account.name} · ${account.email} · ${r.registryRoles[account.registry_role] ?? account.registry_role}`,
-          })),
+          span: 'full',
+          // search-as-you-type: the accounts are many and the API gives at most 50 a page
+          control: (props) => <AccountPicker {...props} memberIds={ctx?.memberIds} isSuperAdmin={ctx?.isSuperAdmin} />,
         },
     { name: 'member_role', type: 'select', label: t.memberRole, nullable: false, options: toOptions(MEMBER_ROLES, r.memberRoles) },
     { name: 'responsibilities', type: 'textarea', label: t.memberResponsibilities, max: 2000 },
@@ -96,8 +70,10 @@ const membersConfig = ({ t, r }, me) => ({
 
 /**
  * Who works on the project. Every registry role sees the list (viewInternal); only `manageMembers` changes it. A new
- * member is picked from the accounts with a registry role (`registry/users`); when that list is refused (403, e.g. the
- * two-step sign-in gate) the card says why and members can still be changed and removed.
+ * member is picked by searching the accounts with a registry role (`registry/users`, 20 at a time). The empty search
+ * is read when the card opens: when it is refused (403: not a manager, or the two-step sign-in gate) the card says
+ * why and offers no Add button, and members can still be changed and removed; when no account has a registry role
+ * yet, the card says how to give one.
  */
 export function MembersCard({ registry }) {
   const env = useRegistryEnv()
@@ -105,21 +81,26 @@ export function MembersCard({ registry }) {
   const refresh = useRefreshRegistry(registry.id)
   const canManage = registry.abilities.manageMembers
   const members = useProjectMembers(registry.id)
-  const accounts = useEligibleAccounts(canManage, Boolean(user?.is_super_admin))
+  const isSuperAdmin = Boolean(user?.is_super_admin)
+  const accounts = useAccountSearch('', { enabled: canManage, isSuperAdmin })
   const config = useMemo(() => membersConfig(env, user), [env, user])
-  const eligible = (accounts.data ?? []).filter((account) => !members.some((member) => member.user_id === account.id))
+  const memberKey = members.map((member) => member.user_id).join(',')
+  const ctx = useMemo(() => ({ memberIds: new Set(memberKey ? memberKey.split(',').map(Number) : []), isSuperAdmin }), [memberKey, isSuperAdmin])
 
+  const forbidden = accounts.error?.status === 403
+  const nobody = accounts.isSuccess && accounts.data.total === 0 && !accounts.data.partial
   let notice = null
-  if (canManage && accounts.isError) notice = <Alert tone="info">{`${env.t.membersAddUnavailable} ${errorText(accounts.error, env.c)}`}</Alert>
-  else if (canManage && accounts.isSuccess && eligible.length === 0) notice = <Alert tone="info">{env.t.noEligibleAccounts}</Alert>
+  if (canManage && forbidden) notice = <Alert tone="info">{`${env.t.membersAddUnavailable} ${isMfaRequired(accounts.error) ? env.c.mfaRequired : env.t.membersPickerForbidden}`}</Alert>
+  else if (canManage && nobody) notice = <Alert tone="info">{env.t.noEligibleAccounts}</Alert>
 
   return (
     <CollectionTab
       resource={`${registryPath(registry.id)}/members`}
       config={config}
       canWrite={canManage}
-      canCreate={canManage && accounts.isSuccess && eligible.length > 0}
-      ctx={{ accounts: eligible }}
+      // offered even while nobody has a registry role yet: the picker says so too, and finds them once they do
+      canCreate={canManage && !forbidden}
+      ctx={ctx}
       onChanged={refresh}
       notice={notice}
     />
