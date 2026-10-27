@@ -68,7 +68,7 @@ describe('RegistryOverview', () => {
     const cards = within(screen.getByRole('region', { name: 'Registry overview' })).getAllByRole('link')
     expect(cards).toHaveLength(10)
     expect(cards.map((card) => card.getAttribute('href'))).toEqual([
-      '/registry/projects',
+      '/registry/projects?archived=all',
       '/registry/projects?development_status=planning,in_development,testing,maintenance',
       '/registry/projects?development_status=completed',
       '/registry/projects?development_status=in_development,testing',
@@ -145,10 +145,10 @@ describe('RegistryProjectList', () => {
     await user.selectOptions(screen.getByLabelText('Publication'), 'published')
     await user.selectOptions(screen.getByLabelText('Category'), 'mobile')
     await user.click(screen.getByRole('checkbox', { name: 'My projects only' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Archived only' }))
+    await user.selectOptions(screen.getByLabelText('Archive'), 'all')
     await user.type(screen.getByRole('searchbox'), 'daw')
 
-    await waitFor(() => expect(api.calls('GET', '/registry/projects').at(-1).query).toMatchObject({ publication_status: 'published', category: 'mobile', mine: '1', archived: '1', search: 'daw' }))
+    await waitFor(() => expect(api.calls('GET', '/registry/projects').at(-1).query).toMatchObject({ publication_status: 'published', category: 'mobile', mine: '1', archived: 'all', search: 'daw' }))
     expect(screen.getByTestId('location')).toHaveTextContent('publication_status=published')
   })
 

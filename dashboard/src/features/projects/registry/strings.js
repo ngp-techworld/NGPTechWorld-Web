@@ -125,7 +125,7 @@ export default {
     memberYou: 'أنت',
     noMembers: 'لا يوجد أعضاء بعد',
     noMembersHint: 'أضف أعضاء ليتمكنوا من رؤية الأقسام الحساسة لهذا المشروع.',
-    membersAddSuperOnly: 'إضافة عضو جديد متاحة للمدير العام فقط حاليًا (قائمة الحسابات لا تظهر إلا له). يمكنك تعديل أدوار الأعضاء الحاليين أو إزالتهم.',
+    membersAddUnavailable: 'تعذّر تحميل قائمة الحسابات، فلا يمكن إضافة عضو الآن.',
     noEligibleAccounts: 'لا توجد حسابات أخرى لها دور في سجل المشاريع. أعطِ الحساب دورًا من صفحة المستخدمين أولًا.',
     removeMemberTitle: 'إزالة العضو',
     removeMemberMessage: (name) => `هل تريد إزالة «${name}» من أعضاء المشروع؟ سيفقد وصوله إلى أقسامه الحساسة.`,
@@ -249,6 +249,7 @@ export default {
     severity: 'الخطورة',
     body: 'التفاصيل',
     occurredAt: 'التاريخ',
+    author: 'كتبه',
     searchRecords: 'ابحث في العناوين والتفاصيل…',
 
     // documents
@@ -551,7 +552,7 @@ export default {
     memberYou: 'You',
     noMembers: 'No members yet',
     noMembersHint: 'Add members so they can see this project’s sensitive tabs.',
-    membersAddSuperOnly: 'Adding a new member is currently for super admins only (only they can list the accounts). You can change the roles of the current members or remove them.',
+    membersAddUnavailable: 'The list of accounts could not be loaded, so no member can be added right now.',
     noEligibleAccounts: 'No other account has a project registry role. Give the account a role on the Users page first.',
     removeMemberTitle: 'Remove member',
     removeMemberMessage: (name) => `Remove “${name}” from the project members? They lose access to its sensitive tabs.`,
@@ -670,6 +671,7 @@ export default {
     severity: 'Severity',
     body: 'Details',
     occurredAt: 'Date',
+    author: 'Written by',
     searchRecords: 'Search titles and details…',
 
     documentsTitle: 'Documents',

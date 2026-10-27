@@ -244,6 +244,7 @@ export const maintenanceRecordsConfig = ({ t, r, f }) => ({
     { key: 'status', header: t.status, cell: (row) => enumBadge(row.status, r.recordStatuses, TONES.recordStatus) },
     { key: 'severity', header: t.severity, hideBelow: 'sm', cell: (row) => enumBadge(row.severity, r.severities, TONES.severity) },
     { key: 'occurred_at', header: t.occurredAt, hideBelow: 'md', cell: (row) => (row.occurred_at ? f.date(row.occurred_at) : null) },
+    { key: 'author_name', header: t.author, hideBelow: 'lg', cell: (row) => row.author_name ?? (row.author_id ? t.userN(row.author_id) : null) },
   ],
 })
 
@@ -426,7 +427,9 @@ export const endpointsConfig = ({ t, r, f }) => ({
         <div className="space-y-1">
           {enumBadge(row.verification_status, r.urlVerifications, TONES.verification)}
           {row.verification_status === 'confirmed' && row.last_verified_at ? (
-            <p className="text-[11px] text-muted">{t.verifiedBy(row.verified_by ? (ctx?.userName?.(row.verified_by) ?? t.userN(row.verified_by)) : '—', f.dateTime(row.last_verified_at))}</p>
+            <p className="text-[11px] text-muted">
+              {t.verifiedBy(row.verified_by_name ?? (row.verified_by ? (ctx?.userName?.(row.verified_by) ?? t.userN(row.verified_by)) : '—'), f.dateTime(row.last_verified_at))}
+            </p>
           ) : null}
         </div>
       ),

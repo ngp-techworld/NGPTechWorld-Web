@@ -4,6 +4,7 @@ import { Users } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { CollectionTab, MEMBER_ROLES, registryPath, toOptions, useRefreshRegistry } from '@/features/registry/kit'
 import { api } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { useCrudHooks } from '@/lib/crud'
 import { Alert, Badge } from '@/ui'
 import { useRegistryEnv } from './useRegistryEnv'
@@ -16,16 +17,27 @@ export function useProjectMembers(projectId, enabled = true) {
   return hooks.useList(MEMBERS_LIST, { enabled }).rows
 }
 
+const ACCOUNTS = { per_page: 100 }
+
 /**
- * Accounts that may become members: those with a registry role. Only a super admin can list accounts
- * (`GET /users` is super-admin-only), so for anyone else this is empty and the add button is not offered.
+ * Accounts that may become members: those with a registry role, from `GET registry/users` (API contract B2: super
+ * admins and registry managers, behind the two-step sign-in gate). On a backend without it (404) a super admin falls
+ * back to `GET /users`, filtered to the accounts that have a registry role.
  */
-function useEligibleAccounts(enabled) {
+function useEligibleAccounts(enabled, isSuperAdmin) {
   return useQuery({
-    queryKey: ['crud', '/users', 'list', { per_page: 200, sort: 'name', dir: 'asc' }],
-    queryFn: ({ signal }) => api.get('/users', { per_page: 200, sort: 'name', dir: 'asc' }, { signal }),
+    queryKey: ['registry', 'users', ACCOUNTS],
+    queryFn: async ({ signal }) => {
+      try {
+        return (await api.get('/registry/users', ACCOUNTS, { signal })).data ?? []
+      } catch (err) {
+        if (err.status !== 404 || !isSuperAdmin) throw err
+        return (await api.get('/users', { per_page: 200, sort: 'name', dir: 'asc' }, { signal })).data ?? []
+      }
+    },
     enabled,
-    select: (envelope) => (envelope?.data ?? []).filter((account) => account.registry_role),
+    retry: false,
+    select: (accounts) => accounts.filter((account) => account.registry_role),
   })
 }
 
@@ -82,30 +94,29 @@ const membersConfig = ({ t, r }, me) => ({
 
 /**
  * Who works on the project. Every registry role sees the list (viewInternal); only `manageMembers` changes it. A new
- * member is picked from the accounts with a registry role — a list only super admins can read, so other managers can
- * change and remove members but not add one (see the notice; an API request is recorded for this).
+ * member is picked from the accounts with a registry role (`registry/users`); when that list is refused (403, e.g. the
+ * two-step sign-in gate) the card says why and members can still be changed and removed.
  */
 export function MembersCard({ registry }) {
   const env = useRegistryEnv()
   const { user } = useAuth()
   const refresh = useRefreshRegistry(registry.id)
   const canManage = registry.abilities.manageMembers
-  const canList = canManage && Boolean(user?.is_super_admin)
   const members = useProjectMembers(registry.id)
-  const accounts = useEligibleAccounts(canList)
+  const accounts = useEligibleAccounts(canManage, Boolean(user?.is_super_admin))
   const config = useMemo(() => membersConfig(env, user), [env, user])
   const eligible = (accounts.data ?? []).filter((account) => !members.some((member) => member.user_id === account.id))
 
   let notice = null
-  if (canManage && !canList) notice = <Alert tone="info">{env.t.membersAddSuperOnly}</Alert>
-  else if (canList && accounts.isSuccess && eligible.length === 0) notice = <Alert tone="info">{env.t.noEligibleAccounts}</Alert>
+  if (canManage && accounts.isError) notice = <Alert tone="info">{`${env.t.membersAddUnavailable} ${errorText(accounts.error, env.c)}`}</Alert>
+  else if (canManage && accounts.isSuccess && eligible.length === 0) notice = <Alert tone="info">{env.t.noEligibleAccounts}</Alert>
 
   return (
     <CollectionTab
       resource={`${registryPath(registry.id)}/members`}
       config={config}
       canWrite={canManage}
-      canCreate={canList && eligible.length > 0}
+      canCreate={canManage && accounts.isSuccess && eligible.length > 0}
       ctx={{ accounts: eligible }}
       onChanged={refresh}
       notice={notice}

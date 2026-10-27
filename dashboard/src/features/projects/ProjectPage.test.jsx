@@ -291,21 +291,48 @@ describe('project page: members', () => {
     expect(api.calls('POST', '/registry/projects/7/members')[0].body).toEqual({ user_id: 6, member_role: 'tech_lead', responsibilities: null })
   })
 
-  it('tells a manager who is not a super admin why there is no add button, but lets them change roles', async () => {
-    const { api } = renderPage({ abilities: ABILITIES.managerMember, authUser: manager, extra: { 'GET /registry/projects/:id/members': () => paginated(members) } })
+  it('lets a manager pick from the registry accounts (registry/users), without the super-admin users list', async () => {
+    const { api, user } = renderPage({
+      abilities: ABILITIES.managerMember,
+      authUser: manager,
+      extra: {
+        'GET /registry/projects/:id/members': () => paginated(members),
+        'GET /registry/users': () => paginated(accounts.filter((account) => account.registry_role)),
+        'POST /registry/projects/:id/members': ({ body }) => reply(201, { data: { id: 2, project_id: 7, ...body, user: accounts[1] } }),
+      },
+    })
     await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
 
-    expect(screen.getByText(/Adding a new member is currently for super admins only/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Add member' }))
+    await user.selectOptions(within(screen.getByRole('dialog')).getByLabelText(/^Account/), '6')
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('POST', '/registry/projects/7/members')).toHaveLength(1))
+    expect(api.calls('GET', '/registry/users')[0].query).toEqual({ per_page: '100' })
+    expect(api.calls('GET', '/users')).toHaveLength(0)
+  })
+
+  it('says why a member cannot be added when the account list is refused, and still lets members be changed', async () => {
+    renderPage({
+      abilities: ABILITIES.managerMember,
+      authUser: manager,
+      extra: {
+        'GET /registry/projects/:id/members': () => paginated(members),
+        'GET /registry/users': () => reply(403, { message: 'Turn on two-factor authentication.', code: 'mfa_enrollment_required' }),
+      },
+    })
+    await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
+
+    expect(await screen.findByText(/The list of accounts could not be loaded.*Turn on two-step sign-in/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument()
     expect(region('Project members').getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-    expect(api.calls('GET', '/users')).toHaveLength(0) // super-admin-only endpoint, never called
   })
 
   it('shows the list without any change control to a viewer', async () => {
     renderPage({ abilities: ABILITIES.viewer, authUser: { ...manager, registry_role: 'viewer' }, extra: { 'GET /registry/projects/:id/members': () => paginated(members) } })
     await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
     expect(region('Project members').queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Adding a new member/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/The list of accounts could not be loaded/)).not.toBeInTheDocument()
   })
 })
 
@@ -329,6 +356,27 @@ describe('project page: registry tabs', () => {
     expect(api.calls('PUT', '/registry/projects/7/endpoints/4')[0].body).toEqual({ verification_status: 'confirmed' })
     expect(await screen.findByText(/Confirmed by Admin on/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Mark https://acme.example/api unverified' })).toBeInTheDocument()
+  })
+
+  it('names who verified an endpoint and who wrote a maintenance record, from the API', async () => {
+    const environments = renderPage({
+      route: '/projects/7?tab=environments',
+      extra: {
+        'GET /registry/projects/:id/endpoints': () =>
+          paginated([{ id: 4, url: 'https://acme.example', kind: 'production', verification_status: 'confirmed', verified_by: 9, verified_by_name: 'Sara', last_verified_at: '2026-10-26T09:00:00.000000Z' }]),
+        'GET /registry/projects/:id/maintenance-records': () =>
+          paginated([{ id: 1, type: 'incident', status: 'open', severity: 'high', title: 'Queue stuck', author_id: 9, author_name: 'Sara' }]),
+      },
+    })
+    expect(await screen.findByText(/Confirmed by Sara on/)).toBeInTheDocument()
+    environments.unmount()
+
+    renderPage({
+      route: '/projects/7?tab=maintenance',
+      extra: { 'GET /registry/projects/:id/maintenance-records': () => paginated([{ id: 1, type: 'incident', status: 'open', severity: 'high', title: 'Queue stuck', author_id: 9, author_name: 'Sara' }]) },
+    })
+    const record = (await screen.findByText('Queue stuck')).closest('tr')
+    expect(within(record).getByText('Sara')).toBeInTheDocument()
   })
 
   it('ticks a secret off the Bitwarden checklist', async () => {

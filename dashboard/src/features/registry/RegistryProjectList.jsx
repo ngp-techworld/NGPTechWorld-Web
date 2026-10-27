@@ -10,7 +10,8 @@ import { Alert, Avatar, Badge, Button, Checkbox, DataTable, PageHeader, Paginati
 import { CATEGORIES, COMPLETENESS_GROUPS, DEVELOPMENT_STATUSES, PUBLICATION_STATUSES, STATUS_GROUPS, publicationLabels, registryProjects, registryStrings, toOptions } from './kit'
 import strings from './strings'
 
-// The API pages this list itself (no sort parameter): 25 a page, at most 100.
+// The API pages this list itself (no sort parameter): 25 a page, at most 100. `archived`: '' (not archived, the
+// API's default), '1' (archived only) or 'all' (both, API contract B8).
 const DEFAULTS = { per_page: 25 }
 
 const DEV_TONES = { idea: 'neutral', planning: 'info', in_development: 'warning', testing: 'warning', completed: 'success', maintenance: 'info', paused: 'neutral', archived: 'neutral' }
@@ -142,7 +143,13 @@ export default function RegistryProjectList() {
         </div>
         <div className="flex flex-wrap items-center gap-5">
           <Checkbox label={t.mine} checked={params.mine === '1'} onChange={(checked) => list.set({ mine: checked ? '1' : '' })} />
-          <Checkbox label={t.archived} checked={params.archived === '1'} onChange={(checked) => list.set({ archived: checked ? '1' : '' })} />
+          <Select
+            aria-label={t.archived}
+            value={params.archived ?? ''}
+            onChange={(event) => list.set({ archived: event.target.value })}
+            options={['', '1', 'all'].map((value) => ({ value, label: t.archivedOptions[value] }))}
+            wrapperClassName="w-full sm:w-60"
+          />
         </div>
       </div>
       {isError && rows.length === 0 ? (

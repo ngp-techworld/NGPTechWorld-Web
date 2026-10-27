@@ -17,7 +17,7 @@ export function listLink(filters = {}) {
 
 /** The 10 counters of `GET /registry/overview` (spec §3.7), each opening the list filtered the same way. */
 export const OVERVIEW_CARDS = [
-  { key: 'total', icon: FolderKanban, tone: 'accent', filters: {} },
+  { key: 'total', icon: FolderKanban, tone: 'accent', filters: { archived: 'all' } }, // archived included (B8)
   { key: 'active', icon: Activity, tone: 'info', filters: { development_status: STATUS_GROUPS.active.join(',') } },
   { key: 'completed', icon: CheckCircle2, tone: 'success', filters: { development_status: 'completed' } },
   { key: 'under_development', icon: Hammer, tone: 'warning', filters: { development_status: STATUS_GROUPS.under_development.join(',') } },
