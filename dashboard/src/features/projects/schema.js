@@ -21,7 +21,7 @@ export const TAB_FIELDS = {
 export const emptyProject = () => ({
   slug: '',
   category: '',
-  status: 'completed',
+  status: 'in_progress', // a brand-new project is still being built (the API keeps development_status in_development)
   client: '',
   year: new Date().getFullYear(),
   featured: false,

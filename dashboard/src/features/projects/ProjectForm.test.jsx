@@ -47,7 +47,7 @@ describe('ProjectCreate', () => {
     expect(field(/^Slug/)).toHaveAttribute('dir', 'ltr')
     expect(screen.getByText(/Leave blank to generate it from the English name/)).toBeInTheDocument()
     expect(field(/^Category/)).toHaveValue('')
-    expect(field(/^Status/)).toHaveValue('completed')
+    expect(field(/^Status/)).toHaveValue('in_progress') // a brand-new project is not finished yet
     expect(field(/^Year/)).toHaveValue(new Date().getFullYear())
     expect(screen.getByRole('switch', { name: /Featured project/ })).toHaveAttribute('aria-checked', 'false')
     expect(field('Project name (Arabic)')).toHaveAttribute('dir', 'rtl')
@@ -191,7 +191,7 @@ describe('ProjectCreate', () => {
       publication_status: 'draft',
       slug: null,
       category: 'web',
-      status: 'completed',
+      status: 'in_progress',
       client: 'Acme',
       year: 2024,
       featured: true,
