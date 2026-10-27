@@ -100,6 +100,12 @@ export default {
     unreadableResponse: 'قبل الخادم الطلب لكن تعذّرت قراءة ردّه، فربما حُفظ التغيير. تحقّق من النتيجة قبل أن تعيد المحاولة.',
     unreadableData: 'تعذّرت قراءة ردّ الخادم. أعد المحاولة بعد قليل.',
 
+    // unsaved changes (UnsavedChangesGuard)
+    unsavedTitle: 'تغييرات غير محفوظة',
+    unsavedMessage: 'في هذه الصفحة تغييرات لم تُحفظ بعد، وستضيع إن غادرتها.',
+    unsavedLeave: 'المغادرة دون حفظ',
+    unsavedStay: 'البقاء في الصفحة',
+
     // language
     language: 'اللغة',
     arabic: 'العربية',
@@ -247,6 +253,11 @@ export default {
     itemNotFound: 'This item could not be found.',
     unreadableResponse: 'The server accepted the request but its answer could not be read, so the change may have been saved. Check the result before trying again.',
     unreadableData: 'The server’s answer could not be read. Try again in a moment.',
+
+    unsavedTitle: 'Unsaved changes',
+    unsavedMessage: 'This page has changes that are not saved yet. They are lost if you leave.',
+    unsavedLeave: 'Leave without saving',
+    unsavedStay: 'Stay on the page',
 
     language: 'Language',
     arabic: 'Arabic',

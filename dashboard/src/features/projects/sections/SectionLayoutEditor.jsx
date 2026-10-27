@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, Eye, EyeOff, RotateCcw } from 'lucide-react'
 import { useCommon, useStrings } from '@/i18n'
 import { ApiError } from '@/lib/api'
 import { cx } from '@/lib/cx'
-import { Alert, Badge, Button, Card, IconButton, SortableList, Switch } from '@/ui'
+import { Alert, Badge, Button, Card, IconButton, SortableList, Switch, UnsavedChangesGuard } from '@/ui'
 import strings from './strings'
 
 /** The orderable sections of a public project page, in their built-in order (backend contract). */
@@ -37,7 +37,8 @@ const toBody = (useDefault, items) => (useDefault ? null : items.map(({ key, vis
  *
  * `value` = the stored layout (or null), `defaultLayout` = what "default" means here (shown read-only while the
  * switch is on), `onSave(layoutOrNull)` returns a promise; a 422 (`errors.<field>`, `errors.<field>.N.key`) is shown
- * in the card, on the row it names. Without `canWrite` everything is read-only.
+ * in the card, on the row it names. Without `canWrite` everything is read-only. Leaving the page with an unsaved order
+ * asks first (UnsavedChangesGuard).
  */
 export function SectionLayoutEditor({ title, description, field, value, defaultLayout = null, defaultHint, onSave, canWrite = false, saving = false }) {
   const c = useCommon()
@@ -101,6 +102,8 @@ export function SectionLayoutEditor({ title, description, field, value, defaultL
 
   return (
     <Card title={title} description={description} aria-label={title}>
+      {/* leaving the page (sidebar, Back, reload) with an unsaved order asks first */}
+      <UnsavedChangesGuard when={canWrite && dirty} message={t.unsavedMessage} />
       <div className="space-y-4">
         <Switch
           checked={useDefault}

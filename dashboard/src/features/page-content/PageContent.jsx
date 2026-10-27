@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useCommon, useStrings } from '@/i18n'
 import { ApiError } from '@/lib/api'
 import { errorText } from '@/lib/errors'
-import { Alert, Button, PageHeader, PageSpinner, TabPanel, Tabs, useConfirm, useToast } from '@/ui'
+import { Alert, Button, PageHeader, PageSpinner, TabPanel, Tabs, UnsavedChangesGuard, useConfirm, useToast } from '@/ui'
 import { CollectionManager } from './CollectionManager'
 import { ContentItemModal } from './ContentItemModal'
 import { SaveBar } from './SaveBar'
@@ -52,18 +52,6 @@ function PageContentEditor({ groups }) {
 
   const dirtyCount = countDirtyItems(dirtyFields, keys)
   const hasChanges = dirtyCount > 0
-
-  // The browser's own "leave site?" prompt for a reload, a closed tab or a typed URL. (BrowserRouter has no blocker
-  // API, so leaving through the app's own links is not intercepted — see docs/UI-KIT.md §7.)
-  useEffect(() => {
-    if (!hasChanges) return undefined
-    const onBeforeUnload = (event) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [hasChanges])
 
   // An invalid field may sit in a tab that is not open: open its tab, and focus the field once it is visible.
   const showField = (key, name) => {
@@ -122,6 +110,8 @@ function PageContentEditor({ groups }) {
 
   return (
     <>
+      {/* leaving with unsaved texts asks first: in the app (a link, Back) and in the browser (reload, closed tab) */}
+      <UnsavedChangesGuard when={hasChanges} />
       {errors.root?.server ? (
         <Alert tone="danger" title={t.serverErrorTitle} className="mb-4">
           {errors.root.server.message}

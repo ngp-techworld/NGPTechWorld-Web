@@ -444,8 +444,11 @@ it('lists and deletes', async () => {
 * `ImageUpload`/`GalleryUpload`: no upload progress percentage (fetch has none), gallery files upload one at a time, files
   uploaded and then abandoned before saving are **not** deleted (the backend cleans up replaced/removed images on
   update and everything on record deletion).
-* Forms have no "unsaved changes" navigation guard (BrowserRouter has no blocker API) — edit forms just disable Save
-  until dirty.
+* Unsaved changes: `<UnsavedChangesGuard when={dirty} message? />` (`@/ui`) asks before leaving the page through the
+  app (a confirm dialog, React Router's `useBlocker`) and lets the browser ask on a reload or a closed tab
+  (`beforeunload`). A change of the query alone (`?tab=`) is not blocked. It needs the data router: App uses
+  `createBrowserRouter` and `renderWithProviders` a memory data router. Used by the section-order cards and Page
+  content; other edit forms still just disable Save until dirty.
 * `useToast`/`useConfirm`/`useAuth` throw outside their providers (use `renderWithProviders`); `useLanguage` falls back to Arabic.
 * `useStrings` merges shallowly. Toasts: max 4 visible. Modals: focus trap is a simple Tab loop; nested modals are supported
   (topmost handles Esc).

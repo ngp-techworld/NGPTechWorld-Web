@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { Link } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import SettingsPage from '@/features/settings/SettingsPage'
 import { mockApi, validationError } from '@/test/mockApi'
@@ -179,5 +180,88 @@ describe('site default section order (Site settings)', () => {
     await waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument())
     expect(screen.queryByRole('region', { name: 'Project page section order' })).not.toBeInTheDocument()
     expect(portfolio_sections).toBeNull()
+  })
+})
+
+describe('unsaved section order', () => {
+  // the card with a link elsewhere next to it, like the sidebar
+  function renderWithLink({ layout = all() } = {}) {
+    const api = mockApi({ 'GET /settings': () => ({ data: { portfolio_sections: null } }), 'PUT /projects/:id': ({ body }) => ({ data: { id: 7, ...body } }) })
+    const view = renderWithProviders(
+      <>
+        <ProjectSectionsCard project={{ id: 7, section_layout: layout }} canWrite />
+        <Link to="/catalogs">Catalogs</Link>
+      </>,
+      { route: '/projects/7?tab=overview' },
+    )
+    return { api, ...view }
+  }
+  const location = () => screen.getByTestId('location')
+  const leaving = () => new Event('beforeunload', { cancelable: true })
+
+  it('asks before leaving the page with a changed order: Stay keeps it, Leave goes on', async () => {
+    const { user } = renderWithLink()
+    await user.click(card().getByRole('button', { name: 'Move “Gallery” up' }))
+
+    await user.click(screen.getByRole('link', { name: 'Catalogs' }))
+    const ask = within(await screen.findByRole('dialog', { name: 'Unsaved changes' }))
+    expect(ask.getByText(/The section order you changed is not saved/)).toBeInTheDocument()
+    expect(location()).toHaveTextContent('/projects/7')
+
+    await user.click(ask.getByRole('button', { name: 'Stay on the page' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(location()).toHaveTextContent('/projects/7')
+    expect(names()[5]).toBe('Gallery') // the edit is still there
+    expect(card().getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    await user.click(screen.getByRole('link', { name: 'Catalogs' }))
+    await user.click(within(await screen.findByRole('dialog', { name: 'Unsaved changes' })).getByRole('button', { name: 'Leave without saving' }))
+    await waitFor(() => expect(location()).toHaveTextContent('/catalogs'))
+  })
+
+  it('also asks the browser on a reload or a closed tab, only while something is unsaved', async () => {
+    const { user } = renderWithLink()
+    const clean = leaving()
+    window.dispatchEvent(clean)
+    expect(clean.defaultPrevented).toBe(false)
+
+    await user.click(card().getByRole('button', { name: 'Hide “Video”' }))
+    const dirty = leaving()
+    window.dispatchEvent(dirty)
+    expect(dirty.defaultPrevented).toBe(true)
+  })
+
+  it('lets the page go without asking once the order is saved, or when nothing changed', async () => {
+    const { api, user } = renderWithLink()
+    await user.click(card().getByRole('button', { name: 'Move “Gallery” up' }))
+    await user.click(card().getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.calls('PUT', '/projects/7')).toHaveLength(1))
+    await waitFor(() => expect(card().getByRole('button', { name: 'Save' })).toBeDisabled())
+
+    await user.click(screen.getByRole('link', { name: 'Catalogs' }))
+    await waitFor(() => expect(location()).toHaveTextContent('/catalogs'))
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument()
+  })
+
+  it('guards the site default card in Site settings too', async () => {
+    const settings = { email: 'hi@ngptechworld.com', phone: null, facebook: null, instagram: null, linkedin: null, x: null, whatsapp: null, portfolio_sections: null }
+    mockApi({ 'GET /settings': () => ({ data: settings }) })
+    const { user } = renderWithProviders(
+      <>
+        <SettingsPage />
+        <Link to="/catalogs">Catalogs</Link>
+      </>,
+      { route: '/settings' },
+    )
+    const site = within(await screen.findByRole('region', { name: 'Project page section order' }))
+    await user.click(site.getByRole('switch', { name: /^Use the default order/ }))
+    await user.click(site.getByRole('button', { name: 'Move “Features” down' }))
+
+    await user.click(screen.getByRole('link', { name: 'Catalogs' }))
+    expect(await screen.findByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument()
+    expect(location()).toHaveTextContent('/settings')
+    fireEvent.keyDown(document.activeElement, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument())
+    expect(location()).toHaveTextContent('/settings')
   })
 })

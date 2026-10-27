@@ -18,6 +18,7 @@ export default {
     show: (name) => `إظهار «${name}»`,
     reset: 'إعادة الترتيب الافتراضي',
     saved: 'تم حفظ ترتيب الأقسام',
+    unsavedMessage: 'لم يُحفظ ترتيب الأقسام الذي غيّرته، وسيضيع إن غادرت هذه الصفحة.',
     errorsTitle: 'لم يُحفظ الترتيب:',
     sections: {
       overview: 'نظرة عامة',
@@ -51,6 +52,7 @@ export default {
     show: (name) => `Show “${name}”`,
     reset: 'Reset to the default order',
     saved: 'Section order saved',
+    unsavedMessage: 'The section order you changed is not saved, and it is lost if you leave this page.',
     errorsTitle: 'The order was not saved:',
     sections: {
       overview: 'Overview',
