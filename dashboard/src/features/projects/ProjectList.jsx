@@ -58,7 +58,9 @@ export default function ProjectList() {
   const featuredOf = (row) => (update.isPending && update.variables?.id === row.id ? update.variables.data.featured : row.featured)
 
 
-  const thumb = (row) => <Avatar src={row.cover_image_url} name={pickField(row, 'name')} alt="" shape="rounded" />
+  // `cover_url` is the cover the public page shows (the legacy cover, else the screenshot marked as cover — imported
+  // projects keep their pictures as screenshots); older APIs only send `cover_image_url`; the avatar is the last resort
+  const thumb = (row) => <Avatar src={row.cover_url || row.cover_image_url} name={pickField(row, 'name')} alt="" shape="rounded" />
 
   const columns = [
     {
@@ -77,12 +79,21 @@ export default function ProjectList() {
       cell: (row) => (
         <div className="flex min-w-0 items-center gap-3">
           {thumb(row)}
-          <div className="min-w-0 max-w-xs">
-            <p className="truncate font-semibold">{pickField(row, 'name')}</p>
+          <div className="min-w-0 max-w-[15rem]">
+            <p className="truncate font-semibold" title={pickField(row, 'name')}>
+              {pickField(row, 'name')}
+            </p>
             <p className="truncate text-xs text-muted">
               <bdi dir={otherLang === 'ar' ? 'rtl' : 'ltr'} lang={otherLang}>
                 {row[`name_${otherLang}`]}
               </bdi>
+              {/* the client has its own column only on very wide screens */}
+              {row.client ? (
+                <span className="2xl:hidden">
+                  {' · '}
+                  <bdi>{row.client}</bdi>
+                </span>
+              ) : null}
             </p>
           </div>
         </div>
@@ -93,9 +104,10 @@ export default function ProjectList() {
       key: 'client',
       header: t.colClient,
       sortable: true,
-      hideBelow: 'lg',
+      // below 2xl the client is the second line of the project cell: at 1440 the English headers left no room for it
+      hideBelow: '2xl',
       cell: (row) => (
-        <span dir="auto" className="block max-w-[12rem] truncate">
+        <span dir="auto" className="block max-w-[10rem] truncate" title={row.client ?? undefined}>
           {row.client}
         </span>
       ),
@@ -147,7 +159,9 @@ export default function ProjectList() {
     {
       key: 'team_members_count',
       header: t.colTeam,
-      hideBelow: 'lg',
+      // counts that the project page's tabs show too: only where the table has room for them (at 1440 the English
+      // headers pushed the actions out of view)
+      hideBelow: '2xl',
       cell: (row) => (
         <span className="inline-flex items-center gap-1.5 tabular-nums text-muted" title={t.teamCount(row.team_members_count ?? 0)}>
           <Users size={14} aria-hidden="true" />
@@ -158,7 +172,7 @@ export default function ProjectList() {
     {
       key: 'links_count',
       header: t.colLinks,
-      hideBelow: 'lg',
+      hideBelow: '2xl',
       cell: (row) => (
         <span className="inline-flex items-center gap-1.5 tabular-nums text-muted" title={t.linksCount(row.links_count ?? 0)}>
           <Link2 size={14} aria-hidden="true" />

@@ -159,6 +159,36 @@ describe('ProjectList', () => {
     expect(screen.getByRole('columnheader', { name: 'Team' })).not.toHaveAttribute('aria-sort')
   })
 
+  it('shows the public cover (`cover_url`) of an imported project, whose pictures are screenshots', async () => {
+    mockApi({
+      'GET /projects': () =>
+        paginated([
+          makeProject(1, { cover_image_url: null, cover_url: 'http://localhost/media/projects/screenshots/9-480.webp' }),
+          makeProject(2, { cover_image_url: 'http://localhost/media/projects/two.jpg', cover_url: 'http://localhost/media/projects/two.jpg' }),
+          makeProject(3, { cover_image_url: null }), // an API without cover_url yet, and no cover at all: the letter
+        ]),
+    })
+    renderWithProviders(<ProjectList />, { route: '/projects' })
+    await screen.findByText('Project 1')
+
+    expect(rowOf('Project 1').querySelector('img')).toHaveAttribute('src', 'http://localhost/media/projects/screenshots/9-480.webp')
+    expect(rowOf('Project 2').querySelector('img')).toHaveAttribute('src', 'http://localhost/media/projects/two.jpg')
+    expect(rowOf('Project 3').querySelector('img')).toBeNull()
+  })
+
+  it('keeps the counts for very wide screens, so the actions stay in view at 1440 in English', async () => {
+    listServer()
+    renderWithProviders(<ProjectList />, { route: '/projects' })
+    await screen.findByText('Project 1')
+
+    for (const name of ['Client', 'Team', 'Links']) expect(screen.getByRole('columnheader', { name: new RegExp(`^${name}`) })).toHaveClass('hidden', '2xl:table-cell')
+    // below 2xl the client is the second line of the project cell instead
+    const clients = within(rowOf('Project 1')).getAllByText('Client 1')
+    expect(clients).toHaveLength(2)
+    expect(clients.map((node) => node.closest('td').className.includes('2xl:table-cell') || node.closest('span').className.includes('2xl:hidden'))).toEqual([true, true])
+    expect(within(rowOf('Project 1')).getByRole('link', { name: 'Edit' })).toBeInTheDocument()
+  })
+
   it('paginates', async () => {
     const server = mockApi({ 'GET /projects': ({ query }) => paginated(projects, { page: Number(query.page), perPage: 3, total: 9 }) })
     const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })

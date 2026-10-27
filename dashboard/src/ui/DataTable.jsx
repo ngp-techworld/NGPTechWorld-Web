@@ -7,13 +7,13 @@ import { IconButton } from './IconButton'
 import { Skeleton } from './Spinner'
 import { focusRing } from './styles'
 
-const hideBelow = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }
+const hideBelow = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell', '2xl': 'hidden 2xl:table-cell' }
 const alignCls = { start: 'text-start', center: 'text-center', end: 'text-end' }
 
 /**
  * Data grid for list pages. Data and state live in the parent (server-side paging / sorting).
  *
- * columns = [{ key, header, cell?(row, index), sortable?, sortKey?, align?: 'start|center|end', width?, hideBelow?: 'sm|md|lg|xl', className? }]
+ * columns = [{ key, header, cell?(row, index), sortable?, sortKey?, align?: 'start|center|end', width?, hideBelow?: 'sm|md|lg|xl|2xl', className? }]
  *   - `cell` defaults to row[key]; `sortKey` is the API column (defaults to `key`).
  * sort = { key: 'created_at', dir: 'desc' } (matches the API `sort` / `dir` params), onSortChange({ key, dir }):
  *   clicking a header sorts ascending first, then toggles.
