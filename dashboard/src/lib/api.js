@@ -70,7 +70,44 @@ async function parseBody(res) {
   }
 }
 
-async function send(method, path, { params, body, signal, auth = true, headers = {} } = {}) {
+/** `xhr.getAllResponseHeaders()` → Headers. */
+function parseXhrHeaders(raw) {
+  const headers = new Headers()
+  for (const line of String(raw || '').split(/\r?\n/)) {
+    const colon = line.indexOf(':')
+    if (colon > 0) headers.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
+  }
+  return headers
+}
+
+/**
+ * The same request through XMLHttpRequest, which (unlike fetch) reports upload progress. Resolves a `Response`, so the
+ * caller handles it exactly like a fetch answer. `onUploadProgress({ loaded, total })`: `total` is null when unknown.
+ */
+function sendWithProgress(url, init, onUploadProgress) {
+  return new Promise((resolve, reject) => {
+    if (init.signal?.aborted) {
+      reject(new DOMException('The request was aborted.', 'AbortError'))
+      return
+    }
+    const xhr = new XMLHttpRequest()
+    xhr.open(init.method, url)
+    Object.entries(init.headers).forEach(([name, value]) => xhr.setRequestHeader(name, value))
+    if (xhr.upload) {
+      xhr.upload.onprogress = (event) => onUploadProgress({ loaded: event.loaded, total: event.lengthComputable ? event.total : null })
+    }
+    xhr.onload = () => {
+      const empty = [204, 205, 304].includes(xhr.status)
+      resolve(new Response(empty ? null : xhr.responseText, { status: xhr.status, statusText: xhr.statusText, headers: parseXhrHeaders(xhr.getAllResponseHeaders()) }))
+    }
+    xhr.onerror = () => reject(new ApiError({ status: 0, message: DEFAULT_MESSAGES[0] }))
+    xhr.onabort = () => reject(new DOMException('The request was aborted.', 'AbortError'))
+    init.signal?.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.send(init.body ?? null)
+  })
+}
+
+async function send(method, path, { params, body, signal, auth = true, headers = {}, onUploadProgress } = {}) {
   const url = `${apiRoot()}${path.startsWith('/') ? path : `/${path}`}${buildQuery(params)}`
   const init = { method, signal, headers: { Accept: 'application/json', ...headers } }
 
@@ -83,6 +120,8 @@ async function send(method, path, { params, body, signal, auth = true, headers =
     init.headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(body)
   }
+
+  if (typeof onUploadProgress === 'function' && typeof XMLHttpRequest !== 'undefined') return sendWithProgress(url, init, onUploadProgress)
 
   let res
   try {
@@ -131,8 +170,9 @@ async function download(path, params, options = {}) {
 
 /**
  * Every method returns the parsed JSON body exactly as Laravel sent it (`{ data, meta, links }` for lists,
- * `{ data }` for a record, `null` for 204) and throws ApiError otherwise. `options`: { signal, auth, headers }.
- * `auth: false` = no bearer token and a 401 does not log the user out (used by login).
+ * `{ data }` for a record, `null` for 204) and throws ApiError otherwise. `options`: { signal, auth, headers, onUploadProgress }.
+ * `auth: false` = no bearer token and a 401 does not log the user out (used by login). `onUploadProgress({ loaded,
+ * total })` sends the request through XMLHttpRequest instead of fetch, to report how much of the body was sent.
  */
 export const api = {
   request,
