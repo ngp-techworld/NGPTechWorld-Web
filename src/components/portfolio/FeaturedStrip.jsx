@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang } from '../../i18n/LanguageContext'
 import ProjectCover from '../ProjectCover'
@@ -13,6 +13,24 @@ export default function FeaturedStrip({ projects }) {
   const { t, pick, dir } = useLang()
   const track = useRef(null)
   const headingId = useId()
+  // The arrows only make sense when the strip actually scrolls: two covers on a wide screen fit
+  // side by side, and arrows that do nothing there read as broken. Measured again whenever the
+  // window or the strip changes size.
+  const [scrolls, setScrolls] = useState(false)
+
+  useEffect(() => {
+    const el = track.current
+    if (!el) return undefined
+    const measure = () => setScrolls(el.scrollWidth > el.clientWidth + 1)
+    measure()
+    window.addEventListener('resize', measure)
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+    observer?.observe(el)
+    return () => {
+      window.removeEventListener('resize', measure)
+      observer?.disconnect()
+    }
+  }, [projects])
 
   if (!projects?.length) return null
 
@@ -32,7 +50,7 @@ export default function FeaturedStrip({ projects }) {
     <section className="pf-strip" aria-labelledby={headingId}>
       <div className="pf-strip__head">
         <h2 id={headingId} className="pf-strip__title">{t.pfFeatured}</h2>
-        {projects.length > 1 && (
+        {scrolls && (
           <div className="pf-strip__nav">
             <button type="button" onClick={() => step(false)} aria-label={t.pfPrev}><Chevron back /></button>
             <button type="button" onClick={() => step(true)} aria-label={t.pfNext}><Chevron /></button>
