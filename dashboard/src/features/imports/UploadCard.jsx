@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { FileArchive, FolderOpen, FolderUp } from 'lucide-react'
 import { useFormat, useStrings } from '@/i18n'
+import { isUnreadableResponse } from '@/lib/api'
 import { cx } from '@/lib/cx'
 import { Alert, Button, Card } from '@/ui'
 import { importBatches, uploadPackage } from './hooks'
@@ -127,6 +128,8 @@ export function UploadCard() {
         setState({ phase: 'idle', stopped: true })
         return
       }
+      // answered 2xx but unreadable: the batch was most likely created, so the history below shows it
+      if (isUnreadableResponse(err)) queryClient.invalidateQueries({ queryKey: importBatches.keys.lists })
       // anything that is neither ours nor the API's: the step's own message, or the generic one while uploading
       const known = err instanceof PackageInputError || err?.name === 'ApiError'
       const error = known ? err : FALLBACK_CODES[step] ? new PackageInputError(FALLBACK_CODES[step]) : { status: null, message: '' }

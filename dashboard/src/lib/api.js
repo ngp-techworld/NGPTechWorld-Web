@@ -2,18 +2,32 @@ import { clearToken, getToken } from './storage'
 
 /**
  * Failure of an API call. `errors` is Laravel's `{ field: [messages] }` map (422), `data` the raw JSON body.
- * status 0 = the request never reached the server (offline / CORS / server down).
+ * status 0 = the request never reached the server (offline / CORS / server down). `code` is set by this client for
+ * failures it detects itself (`UNREADABLE_RESPONSE`), `method` names the request's verb.
  */
 export class ApiError extends Error {
-  constructor({ status = 0, message, errors, data = null, retryAfter = null } = {}) {
+  constructor({ status = 0, message, errors, data = null, retryAfter = null, code = null, method = null } = {}) {
     super(message || `Request failed (${status})`)
     this.name = 'ApiError'
     this.status = status
     this.errors = errors && typeof errors === 'object' ? errors : {}
     this.data = data
     this.retryAfter = retryAfter
+    this.code = code
+    this.method = method
   }
 }
+
+/**
+ * A 2xx answer whose body is not JSON (e.g. a PHP notice printed in front of it, or a proxy's HTML page). The server
+ * accepted the request — a write may well have been saved — but the client cannot use its answer, so the call rejects
+ * with an ApiError of this `code` (its `status` is the 2xx one): every caller already handles a rejection, none can
+ * work with a body that is missing. Callers that wrote something refresh what they show (see crud.js).
+ */
+export const UNREADABLE_RESPONSE = 'unreadable_response'
+
+/** Is `err` the rejection of a 2xx answer whose body could not be read? */
+export const isUnreadableResponse = (err) => err instanceof ApiError && err.code === UNREADABLE_RESPONSE
 
 const DEFAULT_MESSAGES = {
   0: 'Network error',
@@ -59,14 +73,15 @@ export function buildQuery(params) {
   return query ? `?${query}` : ''
 }
 
+/** `{ data }`: the JSON body, `null` when there is none (204, empty); `{ data: null, raw, unreadable: true }` when it is not JSON. */
 async function parseBody(res) {
-  if (res.status === 204) return null
+  if (res.status === 204) return { data: null }
   const text = await res.text()
-  if (!text) return null
+  if (!text) return { data: null }
   try {
-    return JSON.parse(text)
+    return { data: JSON.parse(text) }
   } catch {
-    return null
+    return { data: null, raw: text, unreadable: true }
   }
 }
 
@@ -135,7 +150,7 @@ async function send(method, path, { params, body, signal, auth = true, headers =
 
 async function request(method, path, options = {}) {
   const res = await send(method, path, options)
-  const data = await parseBody(res)
+  const { data, raw, unreadable } = await parseBody(res)
 
   if (!res.ok) {
     if (res.status === 401 && options.auth !== false) handleUnauthorized()
@@ -148,6 +163,10 @@ async function request(method, path, options = {}) {
       retryAfter: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
     })
   }
+  if (unreadable) {
+    console.warn(`[api] ${method} ${path} answered ${res.status} with a body that is not JSON; the call is treated as failed.`, raw.slice(0, 200))
+    throw new ApiError({ status: res.status, code: UNREADABLE_RESPONSE, method, message: 'The server answered, but its answer could not be read.' })
+  }
   return data
 }
 
@@ -156,7 +175,7 @@ async function download(path, params, options = {}) {
   const res = await send('GET', path, { ...options, params, headers: { Accept: '*/*', ...options.headers } })
   if (!res.ok) {
     if (res.status === 401 && options.auth !== false) handleUnauthorized()
-    const data = await parseBody(res).catch(() => null)
+    const { data } = await parseBody(res).catch(() => ({ data: null }))
     throw new ApiError({ status: res.status, message: data?.message || DEFAULT_MESSAGES[res.status], errors: data?.errors, data })
   }
   const disposition = res.headers.get('Content-Disposition') || ''

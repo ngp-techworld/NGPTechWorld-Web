@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { installFakeXhr } from '@/test/fakeXhr'
-import { mockApi, reply, validationError } from '@/test/mockApi'
-import { ApiError, api, buildQuery, saveBlob, setUnauthorizedHandler } from './api'
+import { mockApi, reply, replyText, validationError } from '@/test/mockApi'
+import { ApiError, UNREADABLE_RESPONSE, api, buildQuery, isUnreadableResponse, saveBlob, setUnauthorizedHandler } from './api'
 import { TOKEN_KEY } from './storage'
 
 describe('buildQuery', () => {
@@ -82,6 +82,41 @@ describe('api client', () => {
     await expect(api.get('/a')).rejects.toMatchObject({ status: 404, message: 'Not found.', errors: {} })
     await expect(api.get('/b')).rejects.toMatchObject({ status: 500, message: 'Server Error' })
     await expect(api.post('/auth/login', {}, { auth: false })).rejects.toMatchObject({ status: 429, retryAfter: 42 })
+  })
+
+  describe('a 2xx answer whose body is not JSON', () => {
+    // what the demo's PHP sent for every multipart request: a notice printed in front of the JSON
+    const NOTICE = `<br />\n<b>Notice</b>:  PHP Request Startup: file created in the system's temporary directory<br />\n{"data":{"id":9}}`
+
+    it('rejects with an ApiError the caller can recognise, and warns in the console', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockApi({ 'POST /registry/projects/:id/screenshots': () => replyText(201, NOTICE) })
+
+      const error = await api.post('/registry/projects/7/screenshots', new FormData()).catch((err) => err)
+
+      expect(error).toBeInstanceOf(ApiError)
+      expect(error).toMatchObject({ status: 201, code: UNREADABLE_RESPONSE, method: 'POST', errors: {} })
+      expect(isUnreadableResponse(error)).toBe(true)
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('POST /registry/projects/7/screenshots answered 201'), expect.stringContaining('Notice'))
+    })
+
+    it('does the same through XMLHttpRequest (uploads with progress)', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockApi({ 'POST /registry/imports': () => replyText(201, NOTICE) })
+      installFakeXhr()
+
+      await expect(api.post('/registry/imports', new FormData(), { onUploadProgress: () => {} })).rejects.toMatchObject({ code: UNREADABLE_RESPONSE, status: 201 })
+    })
+
+    it('still resolves null for an empty 2xx body, and leaves error answers as they were', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockApi({ 'POST /a': () => replyText(200, ''), 'GET /b': () => replyText(500, '<html>Server Error</html>') })
+
+      await expect(api.post('/a')).resolves.toBeNull()
+      const error = await api.get('/b').catch((err) => err)
+      expect(error).toMatchObject({ status: 500, code: null })
+      expect(isUnreadableResponse(error)).toBe(false)
+    })
   })
 
   it('turns a network failure into ApiError status 0', async () => {

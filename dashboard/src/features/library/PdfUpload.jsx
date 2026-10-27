@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLink, FileText, FileUp, RefreshCw } from 'lucide-react'
 import { useCommon, useFormat, useStrings } from '@/i18n'
-import { api } from '@/lib/api'
+import { api, isUnreadableResponse } from '@/lib/api'
 import { errorText } from '@/lib/errors'
 import { cx } from '@/lib/cx'
 import { Button, Spinner, useFieldContext } from '@/ui'
@@ -52,7 +52,8 @@ export function PdfUpload({ value = null, url, size, onChange, onUploadingChange
       onChange?.(result.path)
     } catch (err) {
       const serverMessage = err?.status === 422 ? err.errors?.file?.[0] : null
-      if (mounted.current) setError(serverMessage || errorText(err, c) || t.pdfUploadFailed)
+      // an unreadable 2xx answer has no path to keep: the file must be uploaded again
+      if (mounted.current) setError(serverMessage || (isUnreadableResponse(err) ? t.pdfUploadFailed : errorText(err, c)) || t.pdfUploadFailed)
     } finally {
       if (mounted.current) setUploading(false)
       onUploadingChange?.(false)

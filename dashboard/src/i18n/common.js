@@ -97,6 +97,8 @@ export default {
     errorBoundaryHint: 'حدث خطأ أثناء عرض هذه الصفحة. يمكنك المحاولة مرة أخرى أو إعادة تحميلها.',
     loadFailed: 'تعذّر تحميل البيانات.',
     itemNotFound: 'لم يتم العثور على هذا العنصر.',
+    unreadableResponse: 'قبل الخادم الطلب لكن تعذّرت قراءة ردّه، فربما حُفظ التغيير. تحقّق من النتيجة قبل أن تعيد المحاولة.',
+    unreadableData: 'تعذّرت قراءة ردّ الخادم. أعد المحاولة بعد قليل.',
 
     // language
     language: 'اللغة',
@@ -243,6 +245,8 @@ export default {
     errorBoundaryHint: 'An error occurred while showing this page. You can try again or reload it.',
     loadFailed: 'Could not load the data.',
     itemNotFound: 'This item could not be found.',
+    unreadableResponse: 'The server accepted the request but its answer could not be read, so the change may have been saved. Check the result before trying again.',
+    unreadableData: 'The server’s answer could not be read. Try again in a moment.',
 
     language: 'Language',
     arabic: 'Arabic',

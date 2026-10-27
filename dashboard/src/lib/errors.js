@@ -1,9 +1,12 @@
+import { isUnreadableResponse } from './api'
+
 /**
  * User-facing text for a failed request, in the current language. `c` is the common string table
  * (`useCommon()`); server messages are only shown for 4xx codes we have no dedicated text for.
  */
 export function errorText(err, c) {
   const status = err?.status
+  if (isUnreadableResponse(err)) return err.method === 'GET' ? c.unreadableData : c.unreadableResponse
   if (status === 0) return c.networkError
   if (isMfaRequired(err)) return c.mfaRequired
   if (status === 403) return c.forbidden

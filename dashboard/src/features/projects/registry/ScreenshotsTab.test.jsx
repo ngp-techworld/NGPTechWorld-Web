@@ -2,7 +2,7 @@ import '../testTimeouts'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { setToken } from '@/lib/storage'
-import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
+import { mockApi, paginated, reply, replyText, validationError } from '@/test/mockApi'
 import { renderWithProviders } from '@/test/renderWithProviders'
 import { dropOn } from '../dndCapture'
 import ProjectEdit from '../ProjectEdit'
@@ -95,6 +95,30 @@ describe('Screenshots tab', () => {
     expect(body.get('platform')).toBe('mobile')
     expect(body.get('is_public')).toBe('1')
     expect(body.has('title_ar')).toBe(false) // nulls are left out
+  })
+
+  it('never leaves the upload dialog hanging when the 201 answer cannot be read: it closes and the tile appears', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let rows = []
+    const { api, user } = renderTab({
+      extra: {
+        'GET /registry/projects/:id/screenshots': () => paginated(rows),
+        'POST /registry/projects/:id/screenshots': () => {
+          rows = [shot(9, { title_en: 'Home page' })]
+          // the demo's PHP printed a notice in front of every multipart answer
+          return replyText(201, `<br />\n<b>Notice</b>: PHP Request Startup: file created in the system's temporary directory<br />\n${JSON.stringify({ data: rows[0] })}`)
+        },
+      },
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Upload a screenshot' }))
+    await user.upload(screen.getByTestId('collection-file-input'), new File(['png'], 'home.png', { type: 'image/png' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByRole('article', { name: 'Home page' })).toBeInTheDocument()
+    expect(screen.getByText(/the change may have been saved/)).toBeInTheDocument()
+    expect(api.calls('POST', '/registry/projects/7/screenshots')).toHaveLength(1)
   })
 
   it('refuses a file type the API does not take before sending', async () => {

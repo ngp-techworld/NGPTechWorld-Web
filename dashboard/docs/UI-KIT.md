@@ -20,7 +20,7 @@ import { applyServerErrors } from '@/lib/applyServerErrors'
 import { emptyToNull, intField, optionalUrl, requiredText } from '@/lib/validation'
 import { errorText } from '@/lib/errors'
 import { renderWithProviders, createWrapper } from '@/test/renderWithProviders'
-import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
+import { mockApi, paginated, reply, replyText, validationError } from '@/test/mockApi'
 ```
 
 Providers that already wrap every page (app and tests): react-query, language, toast, confirm, router, auth. Pages
@@ -232,10 +232,16 @@ All calls return the parsed JSON **exactly as Laravel sent it** (`{ data, meta, 
 `Authorization: Bearer <ngp_admin_token>`. `options`: `{ signal, auth: false, headers }` (`auth: false` = no token and a
 401 does not log out — login only).
 
-Failures throw `ApiError { status, message, errors, data, retryAfter }`: `status 0` = network down; `422` → `errors` is
-`{ field: [messages] }`; `429` → `retryAfter` seconds; **401 anywhere clears the token, empties the query cache and
-`<ProtectedRoute>` redirects to `/login`**. `errorText(err, c)` gives a localized message (server messages of 5xx/404
+Failures throw `ApiError { status, message, errors, data, retryAfter, code, method }`: `status 0` = network down; `422` →
+`errors` is `{ field: [messages] }`; `429` → `retryAfter` seconds; **401 anywhere clears the token, empties the query cache
+and `<ProtectedRoute>` redirects to `/login`**. `errorText(err, c)` gives a localized message (server messages of 5xx/404
 are never shown to users).
+
+A **2xx whose body is not JSON** (a PHP notice printed in front of it, a proxy page) rejects too, with
+`code: UNREADABLE_RESPONSE` and the 2xx `status` (`isUnreadableResponse(err)`), plus a console warning: no caller can use a
+missing body, and a rejection reaches every caller's existing error path. The server did act, so the crud mutations then
+refresh the resource and toast a warning ("may have been saved, check before trying again"), and the registry dialogs
+close instead of offering a second Save that would store a duplicate. An empty 2xx body still resolves `null`.
 
 ### `createCrudHooks(resource)` (`@/lib/crud`)
 
@@ -411,7 +417,7 @@ it('lists and deletes', async () => {
   `screen.getByTestId('location')` shows `pathname + search` (assert redirects). `authUser: null` renders anonymous.
 * `mockApi(routes)` replaces `fetch` (so the real `api` client, headers and error handling run). Handler gets
   `{ method, path, params, query, body, headers }`; return a value (200 JSON), `null` (204), `reply(status, body, headers)`,
-  `validationError({ field: ['msg'] })` (422) or a promise. Inspect with `server.calls(method?, path?)` / `server.requests`;
+  `validationError({ field: ['msg'] })` (422), `replyText(status, text)` (a raw, non-JSON body) or a promise. Inspect with `server.calls(method?, path?)` / `server.requests`;
   `server.on(key, handler)` swaps a handler mid-test. `paginated(rows, { page, perPage, total })` builds Laravel's envelope.
   Multipart bodies arrive as `FormData` (`call.body.get('folder')`).
 * Hooks: `renderHook(() => things.useList({}), { wrapper: createWrapper() })`.

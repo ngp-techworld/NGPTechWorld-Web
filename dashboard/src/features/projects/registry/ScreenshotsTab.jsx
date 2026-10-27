@@ -14,6 +14,7 @@ import {
   useRefreshRegistry,
   valuesToPayload,
 } from '@/features/registry/kit'
+import { isUnreadableResponse } from '@/lib/api'
 import { useCrudHooks } from '@/lib/crud'
 import { cx } from '@/lib/cx'
 import { errorText } from '@/lib/errors'
@@ -92,11 +93,18 @@ export function ScreenshotsTab({ registry }) {
   const pendingOf = (row) => (quick.isPending && quick.variables?.id === row.id ? quick.variables.data : {})
 
   const save = async ({ values, fields, baseline, file }) => {
-    if (dialog.record) {
-      const data = changedPayload(fields, baseline, values)
-      if (Object.keys(data).length) await update.mutateAsync({ id: dialog.record.id, data })
-    } else {
-      await create.mutateAsync(toFormData(valuesToPayload(fields, values), file))
+    try {
+      if (dialog.record) {
+        const data = changedPayload(fields, baseline, values)
+        if (Object.keys(data).length) await update.mutateAsync({ id: dialog.record.id, data })
+      } else {
+        await create.mutateAsync(toFormData(valuesToPayload(fields, values), file))
+      }
+    } catch (err) {
+      // 2xx with an unreadable answer: the upload was most likely stored. The list is refreshed (crud) and a warning
+      // toasted; closing keeps a second Save from storing it twice.
+      if (!isUnreadableResponse(err)) throw err
+      refresh()
     }
     setDialog({ open: false, record: null })
   }

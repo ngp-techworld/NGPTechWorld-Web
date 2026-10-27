@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Eye, ListOrdered, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useCommon, useStrings } from '@/i18n'
+import { isUnreadableResponse } from '@/lib/api'
 import { applyServerErrors } from '@/lib/applyServerErrors'
 import { useCrudHooks } from '@/lib/crud'
 import { errorText } from '@/lib/errors'
@@ -226,12 +227,19 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
   }
 
   const save = async ({ values, fields, baseline, file }) => {
-    if (dialog.record) {
-      const data = changedPayload(fields, baseline, values)
-      if (Object.keys(data).length) await update.mutateAsync({ id: dialog.record.id, data })
-    } else {
-      const payload = { ...(config.extraPayload ?? {}), ...valuesToPayload(fields, values) }
-      await create.mutateAsync(config.upload ? toFormData(payload, file) : payload)
+    try {
+      if (dialog.record) {
+        const data = changedPayload(fields, baseline, values)
+        if (Object.keys(data).length) await update.mutateAsync({ id: dialog.record.id, data })
+      } else {
+        const payload = { ...(config.extraPayload ?? {}), ...valuesToPayload(fields, values) }
+        await create.mutateAsync(config.upload ? toFormData(payload, file) : payload)
+      }
+    } catch (err) {
+      // a 2xx whose answer could not be read was most likely saved: the table is refreshed (crud) and a warning
+      // toasted, so close rather than invite a second Save that would create a duplicate
+      if (!isUnreadableResponse(err)) throw err
+      changed()
     }
     close()
   }

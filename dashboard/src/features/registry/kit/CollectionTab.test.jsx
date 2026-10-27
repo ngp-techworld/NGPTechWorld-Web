@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
+import { describe, expect, it, vi } from 'vitest'
+import { mockApi, paginated, reply, replyText, validationError } from '@/test/mockApi'
 import { renderWithProviders } from '@/test/renderWithProviders'
 import { CollectionTab } from './CollectionTab'
 import { toOptions } from './form'
@@ -246,5 +246,39 @@ describe('CollectionTab', () => {
     await user.click(dialog().getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(calls).toBe(1))
+  })
+
+  it('closes the dialog and re-reads the table when a 2xx answer cannot be read (the upload was stored)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let rows = []
+    let changed = 0
+    const api = mockApi({
+      'GET /registry/projects/:id/documents': () => paginated(rows),
+      'POST /registry/projects/:id/documents': ({ body }) => {
+        rows = [{ id: 5, title: body.get('title') }]
+        // a PHP notice printed in front of the JSON (the demo environment)
+        return replyText(201, `<b>Notice</b>: file created in the temporary directory<br />${JSON.stringify({ data: rows[0] })}`)
+      },
+    })
+    const uploadConfig = {
+      ...config,
+      title: 'Documents',
+      itemLabel: 'document',
+      upload: { accept: '.pdf', extensions: ['pdf'], maxMB: 20 },
+      fields: [{ name: 'title', type: 'text', label: 'Title', required: true }],
+      columns: () => [{ key: 'title', header: 'Title' }],
+    }
+    const { user } = renderWithProviders(<CollectionTab resource="/registry/projects/7/documents" config={uploadConfig} canWrite onChanged={() => (changed += 1)} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Add document' }))
+    await user.upload(screen.getByTestId('collection-file-input'), new File(['%PDF'], 'spec.pdf', { type: 'application/pdf' }))
+    await user.type(dialog().getByLabelText(/^Title/), 'Spec')
+    await user.click(dialog().getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByText('Spec')).toBeInTheDocument() // the table was read again
+    expect(screen.getByText(/its answer could not be read, so the change may have been saved/)).toBeInTheDocument()
+    expect(api.calls('POST', '/registry/projects/7/documents')).toHaveLength(1)
+    expect(changed).toBe(1)
   })
 })
