@@ -252,8 +252,8 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
       {panel('features', hasRegistry ? <FeaturesTab registry={registry} /> : null)}
       {panel('tech', hasRegistry ? <TechStackTab registry={registry} /> : null)}
       {panel('screenshots', hasRegistry ? <ScreenshotsTab registry={registry} /> : null)}
-      {panel('team', <TeamTab projectId={project.id} />)}
-      {panel('links', <LinksTab projectId={project.id} />)}
+      {panel('team', <TeamTab projectId={project.id} canWrite={canEdit} />)}
+      {panel('links', <LinksTab projectId={project.id} canWrite={canEdit} />)}
       {panel('nonfunctional', hasRegistry ? <NonFunctionalTab registry={registry} /> : null)}
       {panel('maintenance', hasRegistry ? <MaintenanceTab registry={registry} /> : null)}
       {panel('documents', hasRegistry ? <DocumentsTab registry={registry} /> : null)}

@@ -1,9 +1,10 @@
 import { Suspense, lazy } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { SearchX } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { canAccessFeature } from '@/app/permissions'
-import { registryProjects, useRefreshRegistry } from '@/features/registry/kit/hooks'
+import { registryPath, registryProjects, useRefreshRegistry } from '@/features/registry/kit/hooks'
 import { useCommon, useLanguage, useStrings } from '@/i18n'
 import { errorText } from '@/lib/errors'
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from '@/ui'
@@ -27,7 +28,14 @@ export default function ProjectEdit() {
   const { data: project, isLoading, isError, error, refetch } = projects.useOne(id)
   const registry = registryProjects.useOne(id)
   const refreshRegistry = useRefreshRegistry(id)
-  const update = projects.useUpdate({ onSuccess: () => refreshRegistry() })
+  const queryClient = useQueryClient()
+  const update = projects.useUpdate({
+    onSuccess: () => {
+      refreshRegistry()
+      // the API mirrors the gallery into the screenshots (LegacyGallery::sync): a saved gallery changes that list too
+      queryClient.invalidateQueries({ queryKey: ['crud', `${registryPath(id)}/screenshots`] })
+    },
+  })
 
   // back to a list this admin can open: the original list, or the registry list for registry-only accounts
   const backTo = canAccessFeature({ id: 'projects' }, user) ? '/projects' : '/registry/projects'

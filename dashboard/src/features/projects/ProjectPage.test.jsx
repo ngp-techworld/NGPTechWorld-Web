@@ -112,7 +112,43 @@ describe('project page: write controls follow the abilities', () => {
   })
 })
 
+describe('project page: Team and Links follow updatePublic', () => {
+  it('shows the team to a viewer without add, edit, delete or drag handles', async () => {
+    renderPage({
+      abilities: ABILITIES.viewer,
+      route: '/projects/7?tab=team',
+      extra: { 'GET /projects/:id/team-members': () => paginated([{ id: 1, project_id: 7, name: 'Sara', role_ar: 'مطورة', role_en: 'Developer', tasks_ar: [], tasks_en: [], avatar: null, avatar_url: null, order: 0 }]) },
+    })
+
+    expect(await screen.findByText('Sara')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit: Sara' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Drag to reorder' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the link controls for an editor', async () => {
+    renderPage({ abilities: ABILITIES.contentEditor, route: '/projects/7?tab=links' })
+    expect(await screen.findByRole('button', { name: 'Add link' })).toBeInTheDocument()
+  })
+})
+
 describe('project page: Overview', () => {
+  it('shows the stored industry even when the catalog arrives after the form', async () => {
+    let release
+    const late = new Promise((resolve) => {
+      release = resolve
+    })
+    renderPage({
+      over: { industry_id: 3 },
+      extra: { 'GET /registry/industries': () => late.then(() => paginated([{ id: 3, key: 'retail', name_ar: 'التجزئة', name_en: 'Retail', order: 0 }])) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+
+    release()
+    await waitFor(() => expect(screen.getByLabelText(/^Industry/)).toHaveValue('3'))
+    expect(screen.getByRole('option', { name: 'Retail' }).selected).toBe(true)
+  })
+
   it('sends the new public fields with the original endpoint, only what changed', async () => {
     const { api, user } = renderPage({
       extra: { 'PUT /projects/:id': ({ body }) => ({ data: { ...legacyProject(), ...body } }) },

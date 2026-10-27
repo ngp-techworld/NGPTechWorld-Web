@@ -65,7 +65,7 @@ export const STATUS_GROUPS = {
   under_development: ['in_development', 'testing'],
 }
 
-export const AUDIT_ACTIONS = ['created', 'updated', 'deleted', 'published', 'unpublished', 'archived', 'restored', 'reordered', 'member_added', 'member_removed', 'viewed_sensitive']
+export const AUDIT_ACTIONS = ['created', 'updated', 'deleted', 'published', 'unpublished', 'featured', 'unfeatured', 'archived', 'restored', 'reordered', 'member_added', 'member_removed', 'viewed_sensitive']
 export const AUDIT_SUBJECTS = [
   'Project', 'ProjectModule', 'ProjectFeature', 'ProjectTechnology', 'ProjectScreenshot', 'ProjectMember', 'Industry', 'Technology',
   'TeamMember', 'ProjectLink', 'User', 'ProjectOperations', 'ProjectQualityAttribute', 'ProjectMaintenanceRecord', 'ProjectDocument',

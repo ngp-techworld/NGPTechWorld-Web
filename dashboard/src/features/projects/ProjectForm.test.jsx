@@ -617,3 +617,14 @@ describe('ProjectEdit', () => {
     expect(within(screen.getByRole('tablist')).getByRole('tab', { name: /^الفريق\s*2$/ })).toBeInTheDocument()
   })
 })
+
+describe('ProjectCreate for an account that cannot create projects', () => {
+  it('says so instead of showing a form the API would refuse', () => {
+    mockApi({})
+    renderWithProviders(<ProjectCreate />, { route: '/projects/new', authUser: { id: 3, name: 'V', email: 'v@ngptechworld.com', is_super_admin: false, role: 'admin', permissions: [], registry_role: 'viewer' } })
+
+    expect(screen.getByRole('heading', { name: 'You cannot create a project' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/registry/projects')
+  })
+})

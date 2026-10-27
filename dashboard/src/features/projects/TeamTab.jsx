@@ -125,14 +125,17 @@ function MemberRow({ member, handle, isDragging, deleting, onEdit, onDelete }) {
           {tasks ? ` · ${t.tasksCount(tasks)}` : null}
         </p>
       </div>
-      <IconButton icon={Pencil} label={t.editMember(member.name)} onClick={onEdit} />
-      <IconButton icon={Trash2} tone="danger" label={t.deleteMember(member.name)} onClick={onDelete} disabled={deleting} />
+      {onEdit ? <IconButton icon={Pencil} label={t.editMember(member.name)} onClick={onEdit} /> : null}
+      {onDelete ? <IconButton icon={Trash2} tone="danger" label={t.deleteMember(member.name)} onClick={onDelete} disabled={deleting} /> : null}
     </div>
   )
 }
 
-/** Team members of an existing project: live CRUD (add / edit in a dialog, delete with confirm, drag to reorder). */
-export function TeamTab({ projectId }) {
+/**
+ * Team members of an existing project: live CRUD (add / edit in a dialog, delete with confirm, drag to reorder).
+ * Without `canWrite` (the registry's `updatePublic`) the list is shown without any change control.
+ */
+export function TeamTab({ projectId, canWrite = true }) {
   const t = useStrings(strings)
   const c = useCommon()
   const confirm = useConfirm()
@@ -171,9 +174,17 @@ export function TeamTab({ projectId }) {
       <SortableList
         items={rows}
         ariaLabel={t.teamTitle}
+        disabled={!canWrite}
         onReorder={(next) => reorder.mutate(next.map((row) => row.id))}
         renderItem={(member, { handle, isDragging }) => (
-          <MemberRow member={member} handle={handle} isDragging={isDragging} deleting={remove.isPending} onEdit={() => setDialog({ open: true, member })} onDelete={() => onDelete(member)} />
+          <MemberRow
+            member={member}
+            handle={canWrite ? handle : null}
+            isDragging={isDragging}
+            deleting={remove.isPending}
+            onEdit={canWrite ? () => setDialog({ open: true, member }) : null}
+            onDelete={canWrite ? () => onDelete(member) : null}
+          />
         )}
       />
     )
@@ -185,9 +196,11 @@ export function TeamTab({ projectId }) {
         title={t.teamTitle}
         description={t.teamDescription}
         actions={
-          <Button size="sm" icon={Plus} onClick={() => setDialog({ open: true, member: null })}>
-            {t.addMember}
-          </Button>
+          canWrite ? (
+            <Button size="sm" icon={Plus} onClick={() => setDialog({ open: true, member: null })}>
+              {t.addMember}
+            </Button>
+          ) : null
         }
       >
         {body}

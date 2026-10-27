@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Lock } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
-import { canAccessFeature } from '@/app/permissions'
+import { canAccessFeature, canCreateProjects } from '@/app/permissions'
 import { overviewKey, registryProjects } from '@/features/registry/kit/hooks'
 import { useStrings } from '@/i18n'
-import { PageHeader } from '@/ui'
+import { Button, EmptyState, PageHeader } from '@/ui'
 import { ProjectForm } from './ProjectForm'
 import { projects } from './hooks'
 import strings from './strings'
@@ -17,6 +18,12 @@ export default function ProjectCreate() {
   const { user } = useAuth()
   // a registry manager without the `projects` section creates from the registry list and goes back there
   const listTo = canAccessFeature({ id: 'projects' }, user) ? '/projects' : '/registry/projects'
+
+  // the route also exists for registry viewers and developers (it belongs to the registry feature): the API would
+  // refuse their save, so say it up front
+  if (!canCreateProjects(user)) {
+    return <EmptyState icon={Lock} title={t.cannotCreateTitle} description={t.cannotCreate} action={<Button to={listTo}>{t.title}</Button>} />
+  }
 
   const onSubmit = async (payload) => {
     const project = await create.mutateAsync(payload)

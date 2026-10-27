@@ -11,6 +11,8 @@ export default {
     createTitle: 'إضافة مشروع',
     editTitle: 'تعديل المشروع',
     notFoundTitle: 'المشروع غير موجود',
+    cannotCreateTitle: 'لا يمكنك إنشاء مشروع',
+    cannotCreate: 'إنشاء المشاريع للمدير العام ومحرّري المشاريع ومديري المشاريع في السجل.',
     registryUnavailable: 'تعذّر تحميل بيانات سجل المشاريع لهذا المشروع، فتظهر الأقسام العامة القديمة فقط.',
 
     // list
@@ -134,6 +136,8 @@ export default {
     createTitle: 'Add a project',
     editTitle: 'Edit project',
     notFoundTitle: 'Project not found',
+    cannotCreateTitle: 'You cannot create a project',
+    cannotCreate: 'Projects are created by super admins, project editors and registry managers.',
     registryUnavailable: 'The project registry could not be loaded for this project, so only the original public sections are shown.',
 
     searchPlaceholder: 'Search by name, client or slug…',

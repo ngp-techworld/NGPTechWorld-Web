@@ -78,10 +78,27 @@ export function RegistryField({ field, form, ctx, disabled = false }) {
             ]
           : resolveOptions(field, ctx)
       const placeholder = field.type === 'boolSelect' || field.nullable === false ? undefined : field.required ? (field.placeholder ?? r.choose) : r.noneOption
+      // controlled: options that arrive after the form (modules, catalog entries) must still show the stored value,
+      // which an uncontrolled <select> registered before its <option> existed would not
       return (
-        <Field label={field.label} hint={hint} error={error} required={field.required} className={span}>
-          <Select placeholder={placeholder} options={options} disabled={disabled} {...register(field.name)} />
-        </Field>
+        <Controller
+          name={field.name}
+          control={control}
+          render={({ field: rhf }) => (
+            <Field label={field.label} hint={hint} error={error} required={field.required} className={span}>
+              <Select
+                ref={rhf.ref}
+                name={rhf.name}
+                value={rhf.value ?? ''}
+                onChange={(event) => rhf.onChange(event.target.value)}
+                onBlur={rhf.onBlur}
+                placeholder={placeholder}
+                options={options}
+                disabled={disabled}
+              />
+            </Field>
+          )}
+        />
       )
     }
     case 'switch':

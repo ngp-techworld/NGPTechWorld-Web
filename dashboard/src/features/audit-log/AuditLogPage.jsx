@@ -14,7 +14,7 @@ const users = createCrudHooks('/users')
 
 // The API pages newest first (no sort parameter); 50 a page by default, at most 200.
 const DEFAULTS = { per_page: 50 }
-const ACTION_TONES = { created: 'success', updated: 'info', deleted: 'danger', published: 'success', unpublished: 'warning', archived: 'warning', restored: 'info', member_added: 'accent', member_removed: 'warning', viewed_sensitive: 'gold' }
+const ACTION_TONES = { created: 'success', updated: 'info', deleted: 'danger', published: 'success', unpublished: 'warning', featured: 'gold', unfeatured: 'neutral', archived: 'warning', restored: 'info', member_added: 'accent', member_removed: 'warning', viewed_sensitive: 'gold' }
 
 const show = (value) => {
   if (value === null || value === undefined) return <span className="text-faint">—</span>

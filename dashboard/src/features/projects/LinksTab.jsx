@@ -84,8 +84,11 @@ function LinkModal({ open, link, onClose, onSubmit, saving }) {
   )
 }
 
-/** Links of an existing project: live CRUD (add / edit in a dialog, delete with confirm, drag to reorder). */
-export function LinksTab({ projectId }) {
+/**
+ * Links of an existing project: live CRUD (add / edit in a dialog, delete with confirm, drag to reorder).
+ * Without `canWrite` (the registry's `updatePublic`) the list is shown without any change control.
+ */
+export function LinksTab({ projectId, canWrite = true }) {
   const t = useStrings(strings)
   const c = useCommon()
   const confirm = useConfirm()
@@ -124,12 +127,13 @@ export function LinksTab({ projectId }) {
       <SortableList
         items={rows}
         ariaLabel={t.linksTitle}
+        disabled={!canWrite}
         onReorder={(next) => reorder.mutate(next.map((row) => row.id))}
         renderItem={(link, { handle, isDragging }) => {
           const Icon = link.type === 'website' ? Globe : Link2
           return (
             <div className={cx('flex items-center gap-3 rounded-xl border bg-white/[.03] px-3 py-2', isDragging ? 'border-accent-light' : 'border-white/[.08]')}>
-              {handle}
+              {canWrite ? handle : null}
               <Icon size={18} aria-hidden="true" className="shrink-0 text-accent-lighter" />
               <Badge tone="accent">{t.linkTypes[link.type] ?? link.type}</Badge>
               {isHttpUrl(link.url) ? (
@@ -149,8 +153,12 @@ export function LinksTab({ projectId }) {
                   {link.url}
                 </span>
               )}
-              <IconButton icon={Pencil} label={t.editLink(link.url)} onClick={() => setDialog({ open: true, link })} />
-              <IconButton icon={Trash2} tone="danger" label={t.deleteLink(link.url)} onClick={() => onDelete(link)} disabled={remove.isPending} />
+              {canWrite ? (
+                <>
+                  <IconButton icon={Pencil} label={t.editLink(link.url)} onClick={() => setDialog({ open: true, link })} />
+                  <IconButton icon={Trash2} tone="danger" label={t.deleteLink(link.url)} onClick={() => onDelete(link)} disabled={remove.isPending} />
+                </>
+              ) : null}
             </div>
           )
         }}
@@ -164,9 +172,11 @@ export function LinksTab({ projectId }) {
         title={t.linksTitle}
         description={t.linksDescription}
         actions={
-          <Button size="sm" icon={Plus} onClick={() => setDialog({ open: true, link: null })}>
-            {t.addLink}
-          </Button>
+          canWrite ? (
+            <Button size="sm" icon={Plus} onClick={() => setDialog({ open: true, link: null })}>
+              {t.addLink}
+            </Button>
+          ) : null
         }
       >
         {body}

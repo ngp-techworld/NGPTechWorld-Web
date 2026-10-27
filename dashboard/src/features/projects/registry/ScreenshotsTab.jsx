@@ -17,10 +17,12 @@ import {
 import { useCrudHooks } from '@/lib/crud'
 import { cx } from '@/lib/cx'
 import { errorText } from '@/lib/errors'
-import { Alert, Badge, Button, EmptyState, IconButton, SortableList, Spinner, Switch, useConfirm, useToast } from '@/ui'
+import { Alert, Badge, Button, EmptyState, IconButton, Pagination, SortableList, Spinner, Switch, useConfirm, useToast } from '@/ui'
 import { useRegistryEnv } from './useRegistryEnv'
 
 const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+// Reordering sends every id (the API sets `order` = position): only offered while the whole list fits one page.
+const PER_PAGE = 100
 
 /** The fields of a screenshot (ScreenshotController::rules). Visibility is set at upload, then by the switch. */
 function screenshotFields({ t, r, c }, { upload }) {
@@ -48,7 +50,8 @@ export function ScreenshotsTab({ registry }) {
   const confirm = useConfirm()
   const refresh = useRefreshRegistry(registry.id)
   const hooks = useCrudHooks(`${registryPath(registry.id)}/screenshots`)
-  const list = hooks.useList({ per_page: 100, page: 1, sort: 'order', dir: 'asc' })
+  const [page, setPage] = useState(1)
+  const list = hooks.useList({ per_page: PER_PAGE, page, sort: 'order', dir: 'asc' })
   const failed = (err) => toast.error(actionErrorText(err, r, c))
   const create = hooks.useCreate({ onSuccess: refresh })
   const update = hooks.useUpdate({ onSuccess: refresh })
@@ -70,6 +73,7 @@ export function ScreenshotsTab({ registry }) {
   })
   const reorder = hooks.useReorder()
   const canWrite = registry.abilities.updatePublic
+  const canReorder = canWrite && (list.meta?.last_page ?? 1) <= 1
   const [dialog, setDialog] = useState({ open: false, record: null })
 
   const uploadConfig = useMemo(
@@ -158,7 +162,7 @@ export function ScreenshotsTab({ registry }) {
     )
   } else if (rows.length === 0) {
     body = <EmptyState icon={ImageIcon} title={t.noScreenshots} description={canWrite ? t.noScreenshotsHint : undefined} />
-  } else if (canWrite) {
+  } else if (canReorder) {
     body = (
       <SortableList
         items={rows}
@@ -193,6 +197,7 @@ export function ScreenshotsTab({ registry }) {
         ) : null}
       </div>
       {body}
+      {list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
       <RecordDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false, record: null })}

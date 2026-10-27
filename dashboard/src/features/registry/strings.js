@@ -20,7 +20,7 @@ export default {
       missing_operations: 'تنقصها البيانات التشغيلية',
     },
     hints: {
-      total: 'بما فيها المؤرشفة',
+      total: 'بما فيها المؤرشفة (تظهر في القائمة بخيار «المؤرشفة فقط»)',
       active: 'تخطيط أو تطوير أو اختبار أو صيانة',
       under_development: 'قيد التطوير أو الاختبار',
     },
@@ -70,7 +70,7 @@ export default {
       missing_operations: 'Missing operational info',
     },
     hints: {
-      total: 'Archived included',
+      total: 'Archived included (the list shows them with “Archived only”)',
       active: 'Planning, in development, testing or maintenance',
       under_development: 'In development or testing',
     },

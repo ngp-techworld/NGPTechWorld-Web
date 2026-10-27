@@ -47,9 +47,24 @@ export function RegistryPublicFields({ form, industries = [] }) {
           <Field label={rt.deploymentStatus} required error={errors.deployment_status}>
             <Select {...register('deployment_status')} options={toOptions(DEPLOYMENT_STATUSES, r.deploymentStatuses)} />
           </Field>
-          <Field label={rt.industry} hint={rt.industryHint} error={errors.industry_id}>
-            <Select {...register('industry_id')} placeholder={rt.industryNone} options={industries.map((item) => ({ value: String(item.id), label: pickField(item, 'name') }))} />
-          </Field>
+          {/* controlled: the catalog arrives after the form, and the stored industry must still be the one shown */}
+          <Controller
+            name="industry_id"
+            control={control}
+            render={({ field }) => (
+              <Field label={rt.industry} hint={rt.industryHint} error={errors.industry_id}>
+                <Select
+                  ref={field.ref}
+                  name={field.name}
+                  value={field.value ?? ''}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  placeholder={rt.industryNone}
+                  options={industries.map((item) => ({ value: String(item.id), label: pickField(item, 'name') }))}
+                />
+              </Field>
+            )}
+          />
           <Field label={rt.publicDemoUrl} error={errors.public_demo_url}>
             <Input type="url" {...register('public_demo_url')} placeholder="https://" autoComplete="off" />
           </Field>
