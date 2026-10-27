@@ -193,7 +193,7 @@ export function EnvVarsTable({ rows }) {
         <Select aria-label={t.required} value={required} onChange={(event) => setRequired(event.target.value)} placeholder={r.filterAll(t.required)} options={yesNo} wrapperClassName="w-full sm:w-40" />
       </div>
       <div className="max-h-[560px] overflow-auto rounded-xl border border-white/[.07] print:max-h-none">
-        <table className="w-full min-w-[720px] border-collapse text-sm" aria-label={t.envVarsTitle}>
+        <table className="w-full min-w-[960px] border-collapse text-sm" aria-label={t.envVarsTitle}>
           <thead className="sticky top-0 z-[1] bg-raised">
             <tr className="border-b border-white/[.08] text-xs font-bold text-muted">
               <th scope="col" className="px-3 py-2.5 text-start">{t.envVarName}</th>
@@ -201,21 +201,21 @@ export function EnvVarsTable({ rows }) {
               <th scope="col" className="px-3 py-2.5 text-start">{t.required}</th>
               <th scope="col" className="px-3 py-2.5 text-start">{t.isSecret}</th>
               <th scope="col" className="px-3 py-2.5 text-start">{t.vaultRef}</th>
-              <th scope="col" className="px-3 py-2.5 text-start">{t.purpose}</th>
+              <th scope="col" className="min-w-[220px] px-3 py-2.5 text-start">{t.purpose}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[.05]">
             {shown.map((row) => (
               <tr key={row.id} className="align-top" data-env-var="">
                 <td className="px-3 py-2">
-                  <Code value={row.name} className="font-semibold text-ink" />
+                  <Code value={row.name} className="whitespace-nowrap font-semibold text-ink [word-break:normal]" />
                 </td>
-                <td className="px-3 py-2">{row.component ? <Code value={row.component} className="text-xs" /> : <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2">{row.component ? <Code value={row.component} className="whitespace-nowrap text-xs [word-break:normal]" /> : <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2 text-soft">
                   <YesNo value={row.required} />
                 </td>
                 <td className="px-3 py-2">{row.is_secret ? <Badge tone="warning">{t.isSecret}</Badge> : <span className="text-faint">{r.no}</span>}</td>
-                <td className="px-3 py-2">{row.vault_ref ? <VaultRef value={row.vault_ref} /> : <span className="text-faint">—</span>}</td>
+                <td className="whitespace-nowrap px-3 py-2">{row.vault_ref ? <VaultRef value={row.vault_ref} /> : <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2 text-xs text-soft" dir="auto">
                   <Highlight text={row.purpose} />
                 </td>

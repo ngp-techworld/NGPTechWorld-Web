@@ -88,7 +88,7 @@ export default {
     network: 'الشبكة والنطاق',
 
     // deployment
-    howItShips: 'طريقة النشر',
+    howItShips: 'البناء والإصدار',
     runRequirements: 'متطلبات التشغيل',
     headCommit: 'آخر إيداع',
     currentBranch: 'الفرع الحالي',
@@ -219,7 +219,7 @@ export default {
     hardware: 'Resources',
     network: 'Network and domain',
 
-    howItShips: 'How it ships',
+    howItShips: 'Build and release',
     runRequirements: 'Run requirements',
     headCommit: 'Head commit',
     currentBranch: 'Current branch',

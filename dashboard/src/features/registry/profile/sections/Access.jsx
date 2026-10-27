@@ -61,7 +61,7 @@ function AccountsTable({ query }) {
         return (
           <SubSection title={p.accountsTable} count={rows.length} actions={<SearchCount shown={shown.length} />}>
             <div className="overflow-x-auto rounded-xl border border-white/[.07]">
-              <table className="w-full min-w-[760px] border-collapse text-sm" aria-label={p.accountsTable}>
+              <table className="w-full min-w-[880px] border-collapse text-sm" aria-label={p.accountsTable}>
                 <thead>
                   <tr className="border-b border-white/[.08] bg-white/[.03] text-start text-xs font-bold text-muted">
                     <th scope="col" className="px-3 py-2.5 text-start">{t.purpose}</th>
@@ -108,7 +108,7 @@ function AccountsTable({ query }) {
                         <EnumBadge value={row.mfa_status} labels={r.accountMfaStatuses} tones={TONES.mfa} />
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-soft">{row.last_verified_at ? f.date(row.last_verified_at) : <span className="text-faint">—</span>}</td>
-                      <td className="px-3 py-2.5">
+                      <td className="whitespace-nowrap px-3 py-2.5">
                         <VaultRef value={row.vault_ref} />
                       </td>
                     </tr>

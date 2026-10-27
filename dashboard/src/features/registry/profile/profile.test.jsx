@@ -143,6 +143,27 @@ describe('project profile: data', () => {
   })
 })
 
+describe('project profile: screenshots', () => {
+  const shot = (id, over = {}) => ({ id, project_id: 7, title_ar: `لقطة ${id}`, title_en: `Screen ${id}`, platform: 'desktop', is_public: true, is_cover: false, url: `https://cdn.test/${id}.webp`, thumbnail_url: `https://cdn.test/${id}-480.webp`, order: id, ...over })
+
+  it('opens a screenshot in a lightbox and steps through them', async () => {
+    const { user } = renderProfile({ collections: { ...COLLECTIONS, screenshots: [shot(1, { is_cover: true }), shot(2, { is_public: false })] } })
+    const screenshots = await findSection('Screenshots')
+    expect(within(screenshots).getByText('Private')).toBeInTheDocument()
+
+    await user.click(within(screenshots).getByRole('button', { name: 'View Screen 1' }))
+    const dialog = screen.getByRole('dialog', { name: 'Screen 1' })
+    expect(within(dialog).getByText('1 of 2')).toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: 'Screen 1' })).toHaveAttribute('src', 'https://cdn.test/1.webp')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Next' }))
+    expect(screen.getByRole('dialog', { name: 'Screen 2' })).toBeInTheDocument()
+    expect(screen.getByText('2 of 2')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
 describe('project profile: sign-in accounts', () => {
   it('shows every account with its vault reference and never a password', async () => {
     const { container } = renderProfile()

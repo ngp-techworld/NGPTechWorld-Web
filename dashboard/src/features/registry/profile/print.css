@@ -53,6 +53,19 @@
     background: #fbe7b5 !important;
   }
 
+  /* the completeness bar keeps its fill */
+  html.ngp-profile-print [data-profile-root] [role='progressbar'],
+  html.ngp-profile-print [data-profile-root] [role='progressbar'] > div {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  html.ngp-profile-print [data-profile-root] [role='progressbar'] {
+    background: #ece7f2 !important;
+  }
+  html.ngp-profile-print [data-profile-root] [role='progressbar'] > div {
+    background: #6b4e8e !important;
+  }
+
   /* the tier edge keeps its colour: it says who may read the card */
   html.ngp-profile-print [data-tier='public'] {
     border-inline-start-color: #3d7fd1 !important;
