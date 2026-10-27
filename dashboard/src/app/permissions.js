@@ -26,10 +26,12 @@ export const hasRegistryRole = (user) => Boolean(user?.registry_role)
 
 // The registry screens (mirrors the backend's `ProjectPolicy::viewAny`): every registry role sees them, and the
 // policy then decides per project what may be read or written. The catalogs are also what the `projects` section's
-// content editors pick industries and technologies from.
+// content editors pick industries and technologies from. Imports sit behind the same `viewAny` (the API then needs
+// `updatePublic` on the matched project, or `create` for a new one).
 const REGISTRY_FEATURES = {
   registry: (user) => hasRegistryRole(user),
   catalogs: (user) => hasRegistryRole(user) || hasSection(user, 'projects'),
+  imports: (user) => hasRegistryRole(user),
 }
 
 /** Can the signed-in `user` see this feature at all (nav item + its routes)? */

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { installFakeXhr } from '@/test/fakeXhr'
 import { mockApi, reply, validationError } from '@/test/mockApi'
 import { ApiError, api, buildQuery, saveBlob, setUnauthorizedHandler } from './api'
 import { TOKEN_KEY } from './storage'
@@ -163,6 +164,48 @@ describe('api client', () => {
       const server = mockApi({ 'DELETE /uploads': () => null })
       await api.deleteUpload('partners/a.png')
       expect(server.calls('DELETE', '/uploads')[0].body).toEqual({ path: 'partners/a.png' })
+    })
+  })
+
+  describe('onUploadProgress', () => {
+    it('sends the request through XMLHttpRequest with the same headers and reports the bytes sent', async () => {
+      localStorage.setItem(TOKEN_KEY, 'tok')
+      const server = mockApi({ 'POST /registry/imports': () => reply(201, { data: { id: 'b1' } }) })
+      const xhr = installFakeXhr({ progress: [0.25, 1] })
+      const body = new FormData()
+      body.append('file', new File(['z'.repeat(100)], 'dawri.zip', { type: 'application/zip' }))
+      const onUploadProgress = vi.fn()
+
+      const result = await api.post('/registry/imports', body, { onUploadProgress })
+
+      expect(result).toEqual({ data: { id: 'b1' } })
+      expect(onUploadProgress.mock.calls.map(([event]) => event.loaded / event.total)).toEqual([0.25, 1])
+      expect(xhr.instances[0].requestHeaders).toEqual({ Accept: 'application/json', Authorization: 'Bearer tok' })
+      expect(server.calls('POST', '/registry/imports')[0].body.get('file').name).toBe('dawri.zip')
+    })
+
+    it('throws the same ApiError as fetch, 401 handling included', async () => {
+      localStorage.setItem(TOKEN_KEY, 'tok')
+      const handler = vi.fn()
+      setUnauthorizedHandler(handler)
+      mockApi({
+        'POST /a': () => reply(422, { message: 'Bad package', code: 'E_SCHEMA', problems: [] }),
+        'POST /b': () => reply(401, { message: 'Unauthenticated.' }),
+      })
+      installFakeXhr()
+
+      await expect(api.post('/a', new FormData(), { onUploadProgress: () => {} })).rejects.toMatchObject({ status: 422, message: 'Bad package', data: { code: 'E_SCHEMA' } })
+      await expect(api.post('/b', new FormData(), { onUploadProgress: () => {} })).rejects.toMatchObject({ status: 401 })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects with an AbortError when the signal aborts', async () => {
+      mockApi({ 'POST /a': () => ({ data: {} }) })
+      installFakeXhr({ hold: true })
+      const controller = new AbortController()
+      const pending = api.post('/a', new FormData(), { onUploadProgress: () => {}, signal: controller.signal })
+      controller.abort()
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
     })
   })
 

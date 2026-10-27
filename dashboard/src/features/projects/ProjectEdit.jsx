@@ -14,6 +14,8 @@ import strings from './strings'
 
 // the page itself (every tab, the registry kit) is loaded with the first project opened
 const ProjectPage = lazy(() => import('./ProjectPage').then((module) => ({ default: module.ProjectPage })))
+// the package export (features/imports), for whoever can read the registry record
+const ExportPackageButton = lazy(() => import('@/features/imports/ExportButton'))
 
 /**
  * How the page is shown when the registry record is missing, from why it is missing. Only a 404 means "this backend
@@ -100,6 +102,7 @@ export default function ProjectEdit() {
         }
         backTo={backTo}
         backLabel={t.title}
+        actions={record?.abilities?.view ? <ExportPackageButton project={project} /> : null}
       />
       {mode === 'legacy' ? (
         <Alert tone="info" className="mb-5">

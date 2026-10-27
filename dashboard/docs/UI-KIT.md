@@ -225,6 +225,7 @@ Base URL = `import.meta.env.VITE_API_BASE_URL || '/api'` + `/admin`. Paths start
 | `api.upload(file, folder, options?)` | multipart `POST /uploads` → `{ path, url }` |
 | `api.deleteUpload(path)` | `DELETE /uploads {path}` |
 | `api.download(path, params?)` → `{ blob, filename, contentType }` + `saveBlob(blob, filename)` | authenticated file download (CSV export) |
+| `api.post(path, formData, { onUploadProgress })` | `onUploadProgress({ loaded, total })` sends through XMLHttpRequest (fetch reports no upload progress); same headers, answers and errors. Tests: `installFakeXhr()` from `@/test/fakeXhr` hands the request to `mockApi` |
 | `api.request(method, path, { params, body, signal, auth, headers })` | generic |
 
 All calls return the parsed JSON **exactly as Laravel sent it** (`{ data, meta, links }` / `{ data }` / `null`) and send
