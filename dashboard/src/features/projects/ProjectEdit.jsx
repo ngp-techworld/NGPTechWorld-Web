@@ -1,11 +1,12 @@
 import { Suspense, lazy } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
-import { SearchX } from 'lucide-react'
+import { BookOpenText, SearchX } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { MfaNotice } from '@/app/MfaNotice'
 import { canAccessFeature } from '@/app/permissions'
 import { registryPath, registryProjects, useRefreshRegistry } from '@/features/registry/kit/hooks'
+import profileStrings from '@/features/registry/profile/strings'
 import { useCommon, useLanguage, useStrings } from '@/i18n'
 import { errorText, isMfaRequired } from '@/lib/errors'
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from '@/ui'
@@ -37,6 +38,7 @@ function fallbackFor(error, user) {
 export default function ProjectEdit() {
   const { id } = useParams()
   const t = useStrings(strings)
+  const ps = useStrings(profileStrings)
   const c = useCommon()
   const { pickField } = useLanguage()
   const { user } = useAuth()
@@ -102,7 +104,17 @@ export default function ProjectEdit() {
         }
         backTo={backTo}
         backLabel={t.title}
-        actions={record?.abilities?.view ? <ExportPackageButton project={project} /> : null}
+        actions={
+          record?.abilities?.view ? (
+            <>
+              {/* the read-only dossier of everything this account may see about the project */}
+              <Button variant="secondary" icon={BookOpenText} to={`/projects/${project.id}/profile`}>
+                {ps.openProfile}
+              </Button>
+              <ExportPackageButton project={project} />
+            </>
+          ) : null
+        }
       />
       {mode === 'legacy' ? (
         <Alert tone="info" className="mb-5">
