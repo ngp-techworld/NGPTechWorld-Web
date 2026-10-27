@@ -114,7 +114,7 @@ describe('ProjectCreate', () => {
     expect(server.requests).toHaveLength(0)
   })
 
-  it('"Save and continue" on the Team tab saves a valid form and lands on its Team tab', async () => {
+  it('"Save and continue" on the Team tab saves a valid form as a draft and opens the project page', async () => {
     const server = mockApi({ 'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }) })
     const { user } = renderWithProviders(<ProjectCreate />, { route: '/projects/new' })
     await fillGeneral(user)
@@ -123,7 +123,8 @@ describe('ProjectCreate', () => {
     await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
     await waitFor(() => expect(server.calls('POST', '/projects')).toHaveLength(1))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    expect(server.calls('POST', '/projects')[0].body.publication_status).toBe('draft')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
   })
 
   it('validates required fields locally, counts the errors on the tab and sends nothing', async () => {
@@ -132,12 +133,26 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    // category, client, 2 names, 2 short descriptions, 2 descriptions
-    expect(await screen.findAllByText('This field is required')).toHaveLength(8)
-    expect(field(/^Client/)).toHaveAttribute('aria-invalid', 'true')
-    tabName('General', '8 errors')
+    // category, 2 names, 2 short descriptions, 2 descriptions (client and year are optional since the registry)
+    expect(await screen.findAllByText('This field is required')).toHaveLength(7)
+    expect(field(/^Client/)).not.toHaveAttribute('aria-invalid')
+    tabName('General', '7 errors')
     tabName('Media', '')
     expect(server.requests).toHaveLength(0)
+  })
+
+  it('says the new project is a draft, and sends a blank client and year as null', async () => {
+    const server = mockApi({ 'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }) })
+    const { user } = renderWithProviders(<ProjectCreate />, { route: '/projects/new' })
+    expect(screen.getByText(/A new project is saved as a draft/)).toBeInTheDocument()
+
+    await fillGeneral(user)
+    await user.clear(field(/^Client/))
+    await user.clear(field(/^Year/))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(server.calls('POST', '/projects')).toHaveLength(1))
+    expect(server.calls('POST', '/projects')[0].body).toMatchObject({ client: null, year: null, publication_status: 'draft' })
   })
 
   it('checks the slug format and the year range', async () => {
@@ -154,7 +169,7 @@ describe('ProjectCreate', () => {
     expect(server.requests).toHaveLength(0)
   })
 
-  it('creates the project with the exact payload (paths only, integer year, null for blanks) and opens its Team tab', async () => {
+  it('creates the project as a draft with the exact payload (paths only, integer year, null for blanks) and opens its page', async () => {
     const server = mockApi({
       'POST /uploads': uploadHandler,
       'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }),
@@ -171,8 +186,9 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
     expect(server.calls('POST', '/projects')[0].body).toEqual({
+      publication_status: 'draft',
       slug: null,
       category: 'web',
       status: 'completed',
@@ -352,8 +368,8 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'حفظ' }))
 
-    expect((await screen.findAllByText('هذا الحقل مطلوب')).length).toBe(8)
-    expect(screen.getByRole('tab', { name: /^عام/ })).toHaveAccessibleName(/^عام\s*8 أخطاء$/)
+    expect((await screen.findAllByText('هذا الحقل مطلوب')).length).toBe(7)
+    expect(screen.getByRole('tab', { name: /^عام/ })).toHaveAccessibleName(/^عام\s*7 أخطاء$/)
   })
 })
 

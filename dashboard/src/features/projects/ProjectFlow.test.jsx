@@ -53,9 +53,11 @@ describe('projects feature', () => {
     await enter(user, screen.getByLabelText('Full description (English)'), 'Long')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    // saved → the edit page of the new project, on its Team tab
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    // saved as a draft → the project page (its Overview), then its Team tab
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
+    expect(server.calls('POST', '/projects')[0].body.publication_status).toBe('draft')
     expect(await screen.findByRole('heading', { level: 1, name: 'Core' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /^Team/ }))
     expect(screen.getByRole('tab', { name: /^Team/ })).toHaveAttribute('aria-selected', 'true')
     expect(await screen.findByText('No team members yet')).toBeInTheDocument()
 

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { DEPLOYMENT_STATUSES, DEVELOPMENT_STATUSES, KEY_PATTERN, PLATFORMS } from '@/features/registry/kit'
-import { emptyToNull, intField, optionalText, optionalUrl, requiredText } from '@/lib/validation'
+import { emptyToNull, optionalText, optionalUrl, requiredText } from '@/lib/validation'
 import { TAB_FIELDS, makeProjectSchema, toFormValues, toPayload } from './schema'
 
 // The Overview form of the project page when the registry is available: the original fields (schema.js) plus the
@@ -35,14 +35,10 @@ export const OVERVIEW_FIELDS = [
 const pair = (c, max) => z.object({ ar: requiredText(c, max), en: requiredText(c, max) })
 
 /**
- * `c` common strings, `t` project strings, `rt` registry tab strings, `r` registry kit strings. Client and year are
- * optional here: an imported project may have neither, and an unchanged blank is not sent (the API still refuses to
- * clear one that is set).
+ * `c` common strings, `t` project strings, `rt` registry tab strings, `r` registry kit strings.
  */
 export function makeOverviewSchema(c, t, rt, r) {
   return makeProjectSchema(c, t).extend({
-    client: optionalText(c, 255),
-    year: z.union([z.literal(''), intField(c, { min: 1990, max: 2100 })]),
     industry_id: z.string(),
     ...Object.fromEntries(Object.entries(BILINGUAL_TEXTS).flatMap(([name, max]) => [[`${name}_ar`, optionalText(c, max)], [`${name}_en`, optionalText(c, max)]])),
     platforms: z.array(z.enum(PLATFORMS)),
@@ -70,8 +66,6 @@ const pairs = (list) => (Array.isArray(list) ? list.map((item) => ({ ar: item?.a
 /** API record → Overview form values. */
 export const toOverviewValues = (project) => ({
   ...toFormValues(project),
-  client: project.client ?? '',
-  year: project.year ?? '',
   industry_id: project.industry_id ? String(project.industry_id) : '',
   ...Object.fromEntries(textNames.map((name) => [name, project[name] ?? ''])),
   platforms: Array.isArray(project.platforms) ? project.platforms : [],
@@ -92,8 +86,6 @@ export const toOverviewValues = (project) => ({
 /** Overview form values → body of PUT /projects/{id}. */
 export const toOverviewPayload = (values) => ({
   ...toPayload(values),
-  client: emptyToNull(values.client),
-  year: values.year === '' || values.year === null || values.year === undefined ? null : Number(values.year),
   industry_id: values.industry_id ? Number(values.industry_id) : null,
   ...Object.fromEntries(textNames.map((name) => [name, emptyToNull(values[name])])),
   platforms: values.platforms ?? [],

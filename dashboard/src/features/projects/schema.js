@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { emptyToNull, intField, optionalUrl, requiredText, requiredUrl } from '@/lib/validation'
+import { emptyToNull, intField, optionalText, optionalUrl, requiredText, requiredUrl } from '@/lib/validation'
 import { galleryPaths, toGalleryItems } from '@/ui'
 
 // Mirrors of the API rules (ProjectController / ProjectLinkController). The server stays the source of truth.
@@ -46,8 +46,9 @@ export function makeProjectSchema(c, t) {
       .refine((value) => value === '' || SLUG_PATTERN.test(value), t.slugInvalid),
     category: z.enum(CATEGORIES, { error: c.required }),
     status: z.enum(STATUSES, { error: c.required }),
-    client: requiredText(c, 255),
-    year: intField(c, { min: 1990, max: 2100 }),
+    // optional since the registry (an imported project may not know its client or year, or not name the client)
+    client: optionalText(c, 255),
+    year: z.preprocess((value) => (value === '' || value === null ? undefined : value), intField(c, { min: 1990, max: 2100 }).optional()),
     featured: z.boolean(),
     name_ar: requiredText(c, 255),
     name_en: requiredText(c, 255),
@@ -67,7 +68,7 @@ export const toFormValues = (project) => ({
   category: project.category ?? '',
   status: project.status ?? 'completed',
   client: project.client ?? '',
-  year: project.year ?? new Date().getFullYear(),
+  year: project.year ?? '',
   featured: Boolean(project.featured),
   name_ar: project.name_ar ?? '',
   name_en: project.name_en ?? '',
@@ -85,8 +86,8 @@ export const toPayload = (values) => ({
   slug: emptyToNull(values.slug),
   category: values.category,
   status: values.status,
-  client: values.client,
-  year: Number(values.year),
+  client: emptyToNull(values.client),
+  year: values.year === '' || values.year === null || values.year === undefined ? null : Number(values.year),
   featured: Boolean(values.featured),
   name_ar: values.name_ar,
   name_en: values.name_en,

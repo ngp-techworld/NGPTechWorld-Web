@@ -13,7 +13,8 @@ export default {
     notFoundTitle: 'المشروع غير موجود',
     cannotCreateTitle: 'لا يمكنك إنشاء مشروع',
     cannotCreate: 'إنشاء المشاريع للمدير العام ومحرّري المشاريع ومديري المشاريع في السجل.',
-    registryUnavailable: 'تعذّر تحميل بيانات سجل المشاريع لهذا المشروع، فتظهر الأقسام العامة القديمة فقط.',
+    registryUnavailable: 'هذا الخادم لا يوفّر سجل المشاريع بعد، فتظهر الأقسام العامة القديمة فقط.',
+    registryFailed: 'تعذّر تحميل بيانات السجل لهذا المشروع، فتظهر أقسامه العامة للاطلاع فقط.',
 
     // list
     searchPlaceholder: 'ابحث بالاسم أو العميل أو الرابط المختصر…',
@@ -62,8 +63,9 @@ export default {
     tabErrors: arErrors,
     unsavedOnNested: 'لديك تغييرات غير محفوظة في قسمي «نظرة عامة» و«الوسائط». عد إلى أحدهما واضغط «حفظ» قبل مغادرة الصفحة.',
     saveFirstTitle: 'احفظ المشروع أولًا',
-    saveFirstTeam: 'يمكنك إضافة أعضاء الفريق بعد حفظ بيانات المشروع الأساسية. بعد الحفظ ننقلك إلى هذا القسم مباشرة.',
-    saveFirstLinks: 'يمكنك إضافة الروابط بعد حفظ بيانات المشروع الأساسية. بعد الحفظ ننقلك إلى قسم الفريق، ويمكنك الانتقال منه إلى الروابط بنقرة واحدة.',
+    saveFirstTeam: 'يمكنك إضافة أعضاء الفريق بعد حفظ بيانات المشروع الأساسية. بعد الحفظ تُفتح صفحة المشروع، وقسم الفريق على بُعد نقرة.',
+    saveFirstLinks: 'يمكنك إضافة الروابط بعد حفظ بيانات المشروع الأساسية. بعد الحفظ تُفتح صفحة المشروع، وقسم الروابط على بُعد نقرة.',
+    draftNotice: 'يُحفظ المشروع الجديد كمسودة: لا يظهر في الموقع إلا بعد نشره من بطاقة «النشر» في صفحته.',
     saveAndContinue: 'حفظ ومتابعة',
 
     // form: general
@@ -138,7 +140,8 @@ export default {
     notFoundTitle: 'Project not found',
     cannotCreateTitle: 'You cannot create a project',
     cannotCreate: 'Projects are created by super admins, project editors and registry managers.',
-    registryUnavailable: 'The project registry could not be loaded for this project, so only the original public sections are shown.',
+    registryUnavailable: 'This server has no project registry yet, so only the original public sections are shown.',
+    registryFailed: 'The registry record of this project could not be loaded, so its public sections are shown read-only.',
 
     searchPlaceholder: 'Search by name, client or slug…',
     colProject: 'Project',
@@ -184,8 +187,9 @@ export default {
     tabErrors: (n) => (n === 1 ? '1 error' : `${n} errors`),
     unsavedOnNested: 'You have unsaved changes in Overview or Media. Go back to one of them and press Save before leaving the page.',
     saveFirstTitle: 'Save the project first',
-    saveFirstTeam: 'Team members can be added once the basic project details are saved. After saving you land straight on this section.',
-    saveFirstLinks: 'Links can be added once the basic project details are saved. After saving you land on the Team section, and Links is one click away.',
+    saveFirstTeam: 'Team members can be added once the basic project details are saved. Saving opens the project page, with Team one click away.',
+    saveFirstLinks: 'Links can be added once the basic project details are saved. Saving opens the project page, with Links one click away.',
+    draftNotice: 'A new project is saved as a draft: it appears on the website only once you publish it from the Publication card on its page.',
     saveAndContinue: 'Save and continue',
 
     basicInfo: 'Basic information',

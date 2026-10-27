@@ -36,7 +36,7 @@ export function LabeledGroup({ label, hint, error, children }) {
  * Identity of the project (slug, category, client, year…) and its names / descriptions. `showStatus` / `showFeatured`
  * are off on the registry Overview, where the development status and the Publication card replace them.
  */
-export function GeneralFields({ form, isEdit = false, showStatus = true, showFeatured = true, clientRequired = true, featuredNote }) {
+export function GeneralFields({ form, isEdit = false, showStatus = true, showFeatured = true, featuredNote }) {
   const c = useCommon()
   const t = useStrings(strings)
   const {
@@ -63,10 +63,10 @@ export function GeneralFields({ form, isEdit = false, showStatus = true, showFea
                 <Select {...register('status')} options={statusOptions} />
               </Field>
             ) : null}
-            <Field label={t.client} required={clientRequired} error={errors.client}>
+            <Field label={t.client} error={errors.client}>
               <Input {...register('client')} dir="auto" />
             </Field>
-            <Field label={t.year} required={clientRequired} error={errors.year}>
+            <Field label={t.year} error={errors.year}>
               <Input type="number" inputMode="numeric" min={1990} max={2100} {...register('year')} />
             </Field>
           </div>
@@ -76,6 +76,11 @@ export function GeneralFields({ form, isEdit = false, showStatus = true, showFea
               control={control}
               render={({ field }) => <Switch checked={field.value} onChange={field.onChange} label={t.featured} description={t.featuredHint} />}
             />
+          ) : null}
+          {showFeatured && errors.featured ? (
+            <p role="alert" className="text-xs font-medium text-danger">
+              {fieldErrorMessage(errors.featured)}
+            </p>
           ) : featuredNote ? (
             <p className="text-xs text-muted">{featuredNote}</p>
           ) : null}
