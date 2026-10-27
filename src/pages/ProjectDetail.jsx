@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useLang } from '../i18n/LanguageContext'
+import { sectionOrder } from '../lib/portfolio'
 import PageTitle from '../components/PageTitle'
 import { Skeleton } from '../components/fx/Skeleton'
 import ProjectHero from '../components/portfolio/ProjectHero'
@@ -12,6 +13,25 @@ import {
 import {
   DemoBand, ProjectContactCTA, ProjectLinks, ProjectTeam, ProjectVideo, RelatedProjects,
 } from '../components/portfolio/ProjectExtras'
+
+/**
+ * The sections the dashboard can reorder or hide, by the key the API uses in `sections`. Each one
+ * still renders nothing when the project has no content for it, and each spaces itself (its own top
+ * margin, dividers only between its own children), so any order keeps the same rhythm.
+ */
+const SECTIONS = {
+  overview: ProjectOverview,
+  problem_solution: ProblemSolution,
+  features: ProjectFeatures,
+  modules: ProjectModules,
+  highlights: ProjectHighlights,
+  technologies: TechStack,
+  gallery: ScreenshotGallery,
+  video: ProjectVideo,
+  team: ProjectTeam,
+  links: ProjectLinks,
+  demo: DemoBand,
+}
 
 /** Holds the hero's shape while the project loads, so the page does not jump when it arrives. */
 function DetailSkeleton() {
@@ -80,17 +100,11 @@ export default function ProjectDetail() {
     <article key={project.slug} className="view-enter mx-auto max-w-site px-[26px] pb-[90px]">
       <PageTitle title={pick(project, 'name')} description={pick(project, 'short')} />
       <ProjectHero project={project} />
-      <ProjectOverview project={project} />
-      <ProblemSolution project={project} />
-      <ProjectFeatures project={project} />
-      <ProjectModules project={project} />
-      <ProjectHighlights project={project} />
-      <TechStack project={project} />
-      <ScreenshotGallery project={project} />
-      <ProjectVideo project={project} />
-      <ProjectTeam project={project} />
-      <ProjectLinks project={project} />
-      <DemoBand project={project} />
+      {/* In the order the dashboard set; a key it left out is a section it hid. */}
+      {sectionOrder(project.sections).map((key) => {
+        const Section = SECTIONS[key]
+        return <Section key={key} project={project} />
+      })}
       <RelatedProjects project={project} />
       <ProjectContactCTA project={project} />
     </article>

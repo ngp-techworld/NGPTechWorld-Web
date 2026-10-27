@@ -76,3 +76,24 @@ export function statusLabel(project, t) {
 
 /** Text with something in it — the registry stores optional texts as null, '' or whitespace. */
 export const filled = (value) => typeof value === 'string' && value.trim() !== ''
+
+/**
+ * The project page's orderable sections, in their default order. The hero always comes first and
+ * related projects + the contact call always last, so neither is listed. Mirrors the keys the API
+ * sends in `sections` on GET /projects/{slug}.
+ */
+export const PROJECT_SECTIONS = [
+  'overview', 'problem_solution', 'features', 'modules', 'highlights', 'technologies', 'gallery',
+  'video', 'team', 'links', 'demo',
+]
+
+/**
+ * Which sections to render, in order, from a project's `sections`: the visible keys in the order the
+ * dashboard set. Without the field (an API from before it existed) every section shows in the default
+ * order. Unknown or repeated keys are dropped, so the page never renders a section twice or chokes on a
+ * key it has no component for.
+ */
+export function sectionOrder(sections) {
+  if (!Array.isArray(sections)) return PROJECT_SECTIONS
+  return [...new Set(sections)].filter((key) => PROJECT_SECTIONS.includes(key))
+}

@@ -280,3 +280,73 @@ describe('the screenshot gallery', () => {
     expect(within(gallery).getByRole('button', { name: t.pfOpenShot(1) })).toBeInTheDocument()
   })
 })
+
+describe('section order from the dashboard', () => {
+  // Every orderable section has content, so each one's absence or position is down to `sections`.
+  const complete = {
+    ...full,
+    video_url: 'https://www.youtube.com/watch?v=abc123',
+    team: [{ name: 'سارة أحمد', role_ar: 'مهندسة', role_en: 'Engineer', tasks_ar: ['الواجهة الخلفية'], tasks_en: ['Backend'], avatar: null }],
+    links: [{ type: 'website', url: 'https://example.com' }],
+    screenshots: [{ url: 'https://api.test/media/s1.png', srcset: null, width: 1440, height: 900, title_ar: 'لقطة 1', title_en: 'Shot 1',
+      description_ar: null, description_en: null, platform: 'desktop', language: 'ar', module: null, is_cover: false }],
+  }
+
+  // The h2 each section key renders, in the default order.
+  const HEADINGS = {
+    overview: [t.dAbout],
+    problem_solution: [t.pfProblem, t.pfSolution],
+    features: [t.pfFeatures],
+    modules: [t.pfModules],
+    highlights: [t.pfTechHighlights, t.pfQuality],
+    technologies: [t.pfStack],
+    gallery: [t.dGallery],
+    video: [t.dVideo],
+    team: [t.dTeam],
+    links: [t.dLinks],
+    demo: [t.pfDemoTitle],
+  }
+  const headingsFor = (keys) => [...keys.flatMap((k) => HEADINGS[k]), t.pfRelated, t.pfContactTitle]
+
+  async function sectionHeadings(project) {
+    api.getProject.mockResolvedValue(project)
+    renderAt()
+    await screen.findByRole('heading', { level: 1, name: 'متجر الصقر' })
+    return screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  }
+
+  test('without `sections` (today\'s API) every section shows, in the default order', async () => {
+    expect(await sectionHeadings(complete)).toEqual(headingsFor(Object.keys(HEADINGS)))
+  })
+
+  test('renders the sections in the order the dashboard set, hero first and related + contact last', async () => {
+    const order = ['gallery', 'features', 'overview', 'demo', 'technologies']
+    const headings = await sectionHeadings({ ...complete, sections: order })
+
+    expect(headings).toEqual(headingsFor(order))
+    expect(screen.getByRole('heading', { level: 1 }).compareDocumentPosition(
+      screen.getByRole('heading', { level: 2, name: t.dGallery }),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  test('leaves out a section whose key is not listed, even though it has content', async () => {
+    const order = Object.keys(HEADINGS).filter((k) => k !== 'features' && k !== 'video')
+    const headings = await sectionHeadings({ ...complete, sections: order })
+
+    expect(headings).not.toContain(t.pfFeatures)
+    expect(headings).not.toContain(t.dVideo)
+    expect(headings).toEqual(headingsFor(order))
+  })
+
+  test('ignores keys it does not know, and lists a repeated key once', async () => {
+    const headings = await sectionHeadings({
+      ...complete, sections: ['hero', 'overview', 'toString', '__proto__', 'related', 'overview', 42, null, 'links'],
+    })
+    expect(headings).toEqual(headingsFor(['overview', 'links']))
+  })
+
+  test('still hides a listed section that has nothing to show', async () => {
+    const headings = await sectionHeadings({ ...complete, team: [], sections: ['team', 'overview'] })
+    expect(headings).toEqual(headingsFor(['overview']))
+  })
+})
