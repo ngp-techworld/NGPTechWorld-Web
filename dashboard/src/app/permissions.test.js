@@ -65,6 +65,14 @@ describe('registry features', () => {
     expect(canAccessFeature(feature('catalogs'), limited(['services', 'requests']))).toBe(false)
   })
 
+  it('shows the imports to super admins and to every registry role, never to a section-only admin', () => {
+    expect(canAccessFeature(feature('imports'), superAdmin)).toBe(true)
+    for (const role of REGISTRY_ROLES) expect(canAccessFeature(feature('imports'), limited([], role))).toBe(true)
+    expect(canAccessFeature(feature('imports'), limited(['projects', ...SECTIONS]))).toBe(false)
+    expect(canAccessFeature(feature('imports'), limited(['imports']))).toBe(false)
+    expect(canAccessFeature(feature('imports'), null)).toBe(false)
+  })
+
   it('keeps the audit log for super admins only, whatever the registry role or sections', () => {
     expect(canAccessFeature(feature('audit-log'), superAdmin)).toBe(true)
     expect(canAccessFeature(feature('audit-log'), limited(['audit-log', ...SECTIONS], 'manager'))).toBe(false)
