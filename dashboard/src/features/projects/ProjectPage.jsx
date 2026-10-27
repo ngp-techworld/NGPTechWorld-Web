@@ -15,6 +15,7 @@ import { RegistryPublicFields } from './RegistryPublicFields'
 import { ProjectSectionsCard } from './sections/ProjectSectionsCard'
 import { TeamTab } from './TeamTab'
 import { OVERVIEW_FIELDS, changedOverviewPayload, makeOverviewSchema, toFormErrorKey, toOverviewValues } from './overviewSchema'
+import { MediaScreenshotsNote } from './registry/MediaScreenshotsNote'
 import { MembersCard } from './registry/MembersCard'
 import { PublicationCard } from './registry/PublicationCard'
 import { administrationFields } from './registry/groups'
@@ -245,13 +246,17 @@ export function ProjectPage({ project, registry, fallbackAbilities = READ_ONLY, 
 
       {panel(
         'media',
-        <form onSubmit={submit} noValidate aria-label={t.tabMedia} className="space-y-5">
-          <fieldset disabled={!canEdit} className="min-w-0">
-            <MediaFields form={form} project={project} onCoverBusy={setCoverBusy} onGalleryBusy={setGalleryBusy} />
-          </fieldset>
-          {actions}
-        </form>,
-        { keepMounted: true },
+        <>
+          {/* imported projects keep their pictures as screenshots: say where the public page's images are */}
+          {hasRegistry && visited.has('media') ? <MediaScreenshotsNote registryId={registry.id} project={project} onOpen={() => setTab('screenshots')} /> : null}
+          <form onSubmit={submit} noValidate aria-label={t.tabMedia} className="space-y-5">
+            <fieldset disabled={!canEdit} className="min-w-0">
+              <MediaFields form={form} project={project} onCoverBusy={setCoverBusy} onGalleryBusy={setGalleryBusy} />
+            </fieldset>
+            {actions}
+          </form>
+        </>,
+        { keepMounted: true, className: 'space-y-5' },
       )}
 
       {!isFormTab && isDirty ? <Alert tone="warning">{t.unsavedOnNested}</Alert> : null}

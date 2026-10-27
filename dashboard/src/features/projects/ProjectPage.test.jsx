@@ -567,3 +567,37 @@ describe('project page: registry tabs', () => {
     })
   })
 })
+
+describe('project page: media of an imported project', () => {
+  const screenshotsOf = (total) => () => paginated(total ? [{ id: 1, title_en: 'Home', is_public: true, is_cover: true }] : [], { perPage: 1, total })
+
+  it('says that the public images live in the Screenshots tab, and the cover falls back to the marked one', async () => {
+    const { api, user } = renderPage({ route: '/projects/7?tab=media', over: { cover_image: null, gallery: [] }, extra: { 'GET /registry/projects/:id/screenshots': screenshotsOf(51) } })
+
+    expect(await screen.findByText('The public page’s images are managed in the Screenshots tab')).toBeInTheDocument()
+    expect(screen.getByText(/the screenshot marked as the cover is shown/)).toBeInTheDocument()
+    expect(api.calls('GET', '/registry/projects/7/screenshots')[0].query).toMatchObject({ per_page: '1' })
+
+    await user.click(screen.getByRole('button', { name: 'Open Screenshots' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /Screenshots/ })).toHaveAttribute('aria-selected', 'true'))
+    expect(screen.getByTestId('location')).toHaveTextContent('/projects/7?tab=screenshots')
+  })
+
+  it('says nothing when the project has no screenshots', async () => {
+    renderPage({ route: '/projects/7?tab=media', over: { cover_image: null, gallery: [] }, extra: { 'GET /registry/projects/:id/screenshots': screenshotsOf(0) } })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+    await waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument())
+    expect(screen.queryByText(/managed in the Screenshots tab/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing for a project with its own cover and gallery (and does not ask)', async () => {
+    const { api } = renderPage({
+      route: '/projects/7?tab=media',
+      over: { cover_image: 'projects/cover.png', cover_image_url: 'http://localhost/media/projects/cover.png', gallery: ['projects/gallery/a.png'], gallery_urls: ['http://localhost/media/projects/gallery/a.png'] },
+      extra: { 'GET /registry/projects/:id/screenshots': screenshotsOf(3) },
+    })
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+    expect(screen.queryByText(/managed in the Screenshots tab/)).not.toBeInTheDocument()
+    expect(api.calls('GET', '/registry/projects/7/screenshots')).toHaveLength(0)
+  })
+})
