@@ -5,7 +5,7 @@ import { renderWithProviders } from '@/test/renderWithProviders'
 import { GroupForm } from './GroupForm'
 import { toOptions } from './form'
 import { registryProjects } from './hooks'
-import { deploymentFields } from '@/features/projects/registry/groups'
+import { authFields, dataFields, deploymentFields, monitoringFields } from '@/features/projects/registry/groups'
 import tabStrings from '@/features/projects/registry/strings'
 import kitStrings from './strings'
 
@@ -168,5 +168,49 @@ describe('GroupForm with the real deployment fields', () => {
 
     expect(await screen.findByText('Nothing to save.')).toBeInTheDocument()
     expect(api.requests).toHaveLength(0)
+  })
+})
+
+describe('GroupForm with the real auth, data and monitoring fields', () => {
+  const env = { t: tabStrings.en, r: kitStrings.en }
+  const answer = (group) => ({ 'PUT /registry/projects/:id/operations/:group': ({ body }) => ({ data: { group, values: body } }) })
+  const region = (name) => within(screen.getByRole('region', { name }))
+
+  it('adds an account role to the auth group', async () => {
+    const api = mockApi(answer('auth'))
+    const { user } = renderWithProviders(<GroupForm projectId={7} group="auth" title="Auth" fields={authFields(env)} values={{ auth_method: null, mfa: null, provisioning: null, recovery: null, account_roles: null }} canWrite />)
+
+    await user.selectOptions(region('Auth').getByLabelText('Multi-factor authentication'), 'required')
+    await user.click(region('Auth').getByRole('button', { name: 'Add Role' }))
+    const role = within(region('Auth').getByRole('listitem', { name: 'Role 1' }))
+    await user.type(role.getByLabelText(/^Role/), 'Cashier')
+    await user.selectOptions(role.getByLabelText('Kind'), 'staff')
+    await user.click(region('Auth').getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('PUT', '/registry/projects/7/operations/auth')).toHaveLength(1))
+    expect(api.calls('PUT')[0].body).toEqual({ mfa: 'required', account_roles: [{ role: 'Cashier', kind: 'staff', description: null, permissions_summary: null }] })
+  })
+
+  it('turns on "no database" in the data group', async () => {
+    const api = mockApi(answer('data'))
+    const { user } = renderWithProviders(<GroupForm projectId={7} group="data" title="Data" fields={dataFields(env)} values={{ storage_service: null, upload_handling: null, no_database: false }} canWrite />)
+
+    await user.click(region('Data').getByRole('switch', { name: /^No database/ }))
+    await user.click(region('Data').getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('PUT')).toHaveLength(1))
+    expect(api.calls('PUT')[0].body).toEqual({ no_database: true })
+  })
+
+  it('keeps commas inside a procedure (one per line)', async () => {
+    const api = mockApi(answer('monitoring'))
+    const values = Object.fromEntries(monitoringFields(env).map((field) => [field.name, null]))
+    const { user } = renderWithProviders(<GroupForm projectId={7} group="monitoring" title="Monitoring" fields={monitoringFields(env)} values={values} canWrite />)
+
+    await user.type(region('Monitoring').getByLabelText('Operating procedures'), 'Restart the queue, then check Horizon{Enter}Rotate logs weekly')
+    await user.click(region('Monitoring').getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('PUT')).toHaveLength(1))
+    expect(api.calls('PUT')[0].body).toEqual({ procedures: ['Restart the queue, then check Horizon', 'Rotate logs weekly'] })
   })
 })
