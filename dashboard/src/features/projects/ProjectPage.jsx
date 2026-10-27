@@ -12,6 +12,7 @@ import { GroupedTabs } from './GroupedTabs'
 import { LinksTab } from './LinksTab'
 import { GeneralFields, MediaFields } from './ProjectFields'
 import { RegistryPublicFields } from './RegistryPublicFields'
+import { ProjectSectionsCard } from './sections/ProjectSectionsCard'
 import { TeamTab } from './TeamTab'
 import { OVERVIEW_FIELDS, changedOverviewPayload, makeOverviewSchema, toFormErrorKey, toOverviewValues } from './overviewSchema'
 import { MembersCard } from './registry/MembersCard'
@@ -224,6 +225,8 @@ export function ProjectPage({ project, registry, fallbackAbilities = READ_ONLY, 
             </fieldset>
             {actions}
           </form>
+          {/* only when the API knows per-project section layouts */}
+          {'section_layout' in project ? <ProjectSectionsCard project={project} canWrite={canEdit} /> : null}
           {hasRegistry && registry.operations?.administration ? (
             <GroupForm
               projectId={registry.id}

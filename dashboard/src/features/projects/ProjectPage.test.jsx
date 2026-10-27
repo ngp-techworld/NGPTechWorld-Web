@@ -170,6 +170,21 @@ describe('project page: Team and Links follow updatePublic', () => {
   })
 })
 
+describe('project page: section order card', () => {
+  it('shows the card on the Overview when the API knows section layouts, read-only for a viewer', async () => {
+    renderPage({ abilities: ABILITIES.viewer, over: { section_layout: null }, extra: { 'GET /settings': () => ({ data: { portfolio_sections: null } }) } })
+    const sections = await findRegion('Page section order')
+    expect(sections.getByRole('switch', { name: /^Use the default order/ })).toBeDisabled()
+    expect(sections.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
+  it('leaves it out on a backend without them', async () => {
+    renderPage()
+    await screen.findByRole('heading', { level: 1, name: 'Acme Portal' })
+    expect(screen.queryByRole('region', { name: 'Page section order' })).not.toBeInTheDocument()
+  })
+})
+
 describe('project page: Overview', () => {
   it('shows the stored industry even when the catalog arrives after the form', async () => {
     let release
