@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { vi } from 'vitest'
 import { useState } from 'react'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { ui } from '../../i18n/ui'
@@ -144,5 +145,37 @@ describe('the gallery lightbox', () => {
     expect(screen.queryByRole('button', { name: ui.en.pfNext })).toBeNull()
     key('ArrowRight')
     expect(counter()).toBe(ui.en.pfCounter(1, 1))
+  })
+})
+
+describe('fitting the picture (QA I1)', () => {
+  const render1 = (item) => {
+    localStorage.setItem('ngp.lang', 'en')
+    return render(<LanguageProvider><GalleryLightbox items={[item]} startIndex={0} label="Screenshots" onClose={() => {}} /></LanguageProvider>)
+  }
+
+  test('never draws a screenshot beyond its own size, and offers the original as the sharpest candidate', () => {
+    render1({ src: 'https://x.test/tall.png', srcSet: 'https://x.test/tall-480.webp 480w', width: 780, height: 1688, title: 'Tall' })
+    const img = screen.getByRole('img', { name: 'Tall' })
+    expect(img.style.maxWidth).toBe('min(100%, 780px)')
+    expect(img.style.maxHeight).toBe('min(100%, 1688px)')
+    expect(img).toHaveAttribute('srcset', 'https://x.test/tall-480.webp 480w, https://x.test/tall.png 780w')
+  })
+
+  test('caps by the largest variant when the original size is unknown', () => {
+    render1({ src: 'https://x.test/a.png', srcSet: 'https://x.test/a-480.webp 480w, https://x.test/a-960.webp 960w', title: 'A' })
+    const img = screen.getByRole('img', { name: 'A' })
+    expect(img.style.maxWidth).toBe('min(100%, 960px)')
+    expect(img).toHaveAttribute('srcset', 'https://x.test/a-480.webp 480w, https://x.test/a-960.webp 960w')
+  })
+
+  test('a click on the dark area around the picture still closes it', () => {
+    localStorage.setItem('ngp.lang', 'en')
+    const onClose = vi.fn()
+    render(<LanguageProvider><GalleryLightbox items={items} startIndex={0} label="Screenshots" onClose={onClose} /></LanguageProvider>)
+    fireEvent.click(screen.getByTestId('pf-frame'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('img', { name: 'Dashboard' })) // the picture itself does not close it
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

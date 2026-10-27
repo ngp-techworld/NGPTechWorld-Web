@@ -26,6 +26,8 @@ function readShots(project, pick) {
     .map((s) => ({
       src: s.url,
       srcSet: s.srcset || null,
+      width: s.width || null,
+      height: s.height || null,
       title: pick(s, 'title') || '',
       description: pick(s, 'description') || '',
       view: MOBILE_PLATFORMS.has(s.platform) ? 'mobile' : 'desktop',

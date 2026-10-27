@@ -350,3 +350,20 @@ describe('section order from the dashboard', () => {
     expect(headings).toEqual(headingsFor(['overview']))
   })
 })
+
+describe('the lightbox knows each screenshot\'s own size', () => {
+  test('hands the original width and height to the viewer, so it never stretches the picture', async () => {
+    api.getProject.mockResolvedValue({
+      ...full,
+      screenshots: [{ url: 'https://api.test/media/p.png', srcset: 'https://api.test/media/p-480.webp 480w', width: 780, height: 1688,
+        title_ar: 'هاتف', title_en: 'Phone', description_ar: null, description_en: null, platform: 'mobile', language: 'ar', module: null, is_cover: false }],
+    })
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: /هاتف$/ }))
+
+    const img = within(screen.getByRole('dialog')).getByRole('img', { name: 'هاتف' })
+    expect(img.style.maxWidth).toBe('min(100%, 780px)')
+    expect(img.style.maxHeight).toBe('min(100%, 1688px)')
+    expect(img.getAttribute('srcset')).toContain('https://api.test/media/p.png 780w')
+  })
+})

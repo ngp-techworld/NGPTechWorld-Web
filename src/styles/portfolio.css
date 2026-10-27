@@ -543,21 +543,34 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 .pf-shot__caption { display: block; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: var(--text-muted) }
 
 /* The lightbox. Portalled to <body>, above the sticky navbar (z-50). */
+/* Bar, stage, caption in a column. The stage takes the height that is left (flex: 1 with
+   min-height: 0), so it is a definite box the picture can be fitted into. As a grid row it was
+   not: the stage's own implicit row was auto, max-height: 100% never resolved, and a phone shot
+   was drawn 2716px tall over the caption and the arrows. */
 .pf-lightbox {
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   background: var(--surface-overlay);
   backdrop-filter: blur(8px);
   color: #FFFFFF;
   animation: pfFadeIn .22s ease-out;
 }
-.pf-lightbox__bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(14px, 3vw, 28px) }
+.pf-lightbox__bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(14px, 3vw, 28px) }
 .pf-lightbox__counter { font-family: 'Poppins', sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .75) }
-.pf-lightbox__stage { position: relative; display: grid; place-items: center; padding: 0 clamp(8px, 7vw, 92px); min-height: 0; touch-action: pan-y pinch-zoom }
+/* Side padding keeps clear of the arrows: they sit 8–24px in and are 46px wide, so 72px always clears. */
+.pf-lightbox__stage { position: relative; display: flex; flex: 1 1 auto; min-height: 0; padding-inline: clamp(72px, 7vw, 92px); touch-action: pan-y pinch-zoom }
+.pf-lightbox__frame { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0 }
+/* Centred in the frame and fitted to it, keeping its proportions. GalleryLightbox narrows the two
+   maxima further to the picture's own size, so a small screenshot is never stretched. */
 .pf-lightbox__img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
@@ -579,13 +592,15 @@ a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); ba
 }
 .pf-lightbox__icon:hover { background: rgba(255, 255, 255, .18) }
 .pf-lightbox__icon:focus-visible { outline: 2px solid #E2D2F6; outline-offset: 2px }
-.pf-lightbox__nav { position: absolute; top: 50%; transform: translateY(-50%) }
+.pf-lightbox__nav { position: absolute; z-index: 1; top: 50%; transform: translateY(-50%) }
 .pf-lightbox__nav--prev { inset-inline-start: clamp(8px, 2vw, 24px) }
 .pf-lightbox__nav--next { inset-inline-end: clamp(8px, 2vw, 24px) }
-.pf-lightbox__caption { padding: 14px clamp(16px, 4vw, 40px) 22px; text-align: center }
+.pf-lightbox__caption { flex: none; padding: 14px clamp(16px, 4vw, 40px) 22px; text-align: center }
 .pf-lightbox__title { font-size: 15.5px; font-weight: 600 }
 .pf-lightbox__desc { margin: 4px auto 0; max-width: 70ch; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, .72) }
+/* On a phone the arrows move under the picture; the stage keeps that strip free for them. */
 @media (max-width: 560px) {
+  .pf-lightbox__stage { padding-inline: 8px; padding-bottom: 62px }
   .pf-lightbox__nav { top: auto; bottom: 8px; transform: none }
 }
 @keyframes pfFadeIn { from { opacity: 0 } to { opacity: 1 } }

@@ -82,3 +82,25 @@ describe('portfolio.css keeps long content inside narrow screens', () => {
     expect(declarationsOf(selector)).toMatch(/overflow-wrap:\s*anywhere/)
   })
 })
+
+describe('the lightbox fits its picture between the bar and the caption (QA I1)', () => {
+  it('stacks bar, stage and caption in a column whose middle can shrink', () => {
+    expect(declarationsOf('.pf-lightbox')).toMatch(/display:\s*flex/)
+    expect(declarationsOf('.pf-lightbox')).toMatch(/flex-direction:\s*column/)
+    expect(declarationsOf('.pf-lightbox__stage')).toMatch(/min-height:\s*0/)
+    expect(declarationsOf('.pf-lightbox__stage')).toMatch(/flex:\s*1 1 auto/)
+    expect(declarationsOf('.pf-lightbox__frame')).toMatch(/min-height:\s*0/)
+  })
+
+  it('sizes the picture against a definite box, never past it', () => {
+    const img = declarationsOf('.pf-lightbox__img')
+    expect(img).toMatch(/position:\s*absolute/)
+    expect(img).toMatch(/max-width:\s*100%/)
+    expect(img).toMatch(/max-height:\s*100%/)
+    expect(img).toMatch(/object-fit:\s*contain/)
+  })
+
+  it('keeps the arrows above the picture', () => {
+    expect(declarationsOf('.pf-lightbox__nav')).toMatch(/z-index:\s*[1-9]/)
+  })
+})

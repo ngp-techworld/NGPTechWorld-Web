@@ -4,6 +4,37 @@ import { useLang } from '../../i18n/LanguageContext'
 import { Chevron, CloseIcon } from './icons'
 
 const SWIPE_MIN = 50 // px of horizontal travel before a touch counts as a swipe
+
+/** The widest `NNNw` candidate in a srcset, or 0. */
+const widestVariant = (srcSet) => Math.max(0, ...String(srcSet ?? '').split(',')
+  .map((part) => Number.parseInt((part.trim().match(/\s(\d+)w$/) ?? [])[1], 10))
+  .filter(Number.isFinite))
+
+/**
+ * The srcset, plus the original file at its own width when the API gave one. The variants stop
+ * below the original (the backend never upscales), so without it a large screen could only pick
+ * a 480px variant and blow it up.
+ */
+function withOriginal(item) {
+  if (!item.srcSet) return null
+  if (!item.width || item.srcSet.includes(`${item.src} `)) return item.srcSet
+  return `${item.srcSet}, ${item.src} ${item.width}w`
+}
+
+/**
+ * The most the picture may be drawn at: the frame (100%), and never more than its own pixels —
+ * the original's size when known, else the widest variant. With a srcset the browser's idea of the
+ * image's size comes from `sizes` (100vw), not from the file, so this cap is what keeps a small
+ * screenshot from being stretched.
+ */
+function sizeCap(item) {
+  const width = item.width || widestVariant(item.srcSet) || null
+  const height = item.width && item.height ? item.height : null
+  return {
+    maxWidth: width ? `min(100%, ${width}px)` : '100%',
+    maxHeight: height ? `min(100%, ${height}px)` : '100%',
+  }
+}
 const FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
 /**
@@ -24,6 +55,7 @@ export default function GalleryLightbox({ items, startIndex = 0, label, onClose 
   const [index, setIndex] = useState(() => Math.min(Math.max(startIndex, 0), items.length - 1))
   const dialogRef = useRef(null)
   const closeRef = useRef(null)
+  const frameRef = useRef(null)
   const touch = useRef(null)
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose })
@@ -84,6 +116,7 @@ export default function GalleryLightbox({ items, startIndex = 0, label, onClose 
 
   const item = items[index]
   const alt = item.title || `${label} ${index + 1}`
+  const candidates = withOriginal(item)
 
   return createPortal(
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={label} className="pf-lightbox" dir={dir}>
@@ -100,22 +133,27 @@ export default function GalleryLightbox({ items, startIndex = 0, label, onClose 
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         // A click on the dark area around the picture closes it, as on the site's other viewer.
-        onClick={(e) => { if (e.target === e.currentTarget) onCloseRef.current() }}
+        onClick={(e) => { if (e.target === e.currentTarget || e.target === frameRef.current) onCloseRef.current() }}
       >
         {count > 1 && (
           <button type="button" className="pf-lightbox__icon pf-lightbox__nav pf-lightbox__nav--prev" onClick={() => go(-1)} aria-label={t.pfPrev}>
             <Chevron back size={22} />
           </button>
         )}
-        <img
-          key={index}
-          src={item.src}
-          srcSet={item.srcSet || undefined}
-          sizes={item.srcSet ? '100vw' : undefined}
-          alt={alt}
-          className="pf-lightbox__img"
-          decoding="async"
-        />
+        {/* The box the picture is fitted into: everything between the bar and the caption, minus the
+            room the arrows need. See .pf-lightbox__frame. */}
+        <div ref={frameRef} data-testid="pf-frame" className="pf-lightbox__frame">
+          <img
+            key={index}
+            src={item.src}
+            srcSet={candidates || undefined}
+            sizes={candidates ? '100vw' : undefined}
+            alt={alt}
+            className="pf-lightbox__img"
+            style={sizeCap(item)}
+            decoding="async"
+          />
+        </div>
         {count > 1 && (
           <button type="button" className="pf-lightbox__icon pf-lightbox__nav pf-lightbox__nav--next" onClick={() => go(1)} aria-label={t.pfNext}>
             <Chevron size={22} />
