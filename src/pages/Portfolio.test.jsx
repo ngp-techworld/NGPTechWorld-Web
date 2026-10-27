@@ -108,10 +108,40 @@ describe('filters live in the URL', () => {
     }))
     expect(screen.getByRole('searchbox', { name: t.pfSearch })).toHaveValue('shop')
     expect(screen.getByRole('button', { name: /^موبايل/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByRole('button', { name: t.pfIndustry })).toHaveTextContent('التجزئة (5)')
-    expect(screen.getByRole('button', { name: t.pfTechnology })).toHaveTextContent('Laravel (6)')
-    expect(screen.getByRole('button', { name: t.pfPlatform })).toHaveTextContent(`${t.platformLabels.android} (4)`)
-    expect(screen.getByRole('button', { name: t.pfStatus })).toHaveTextContent(`${t.devStatus.completed} (9)`)
+    // Every select has other filters beside it here, so none shows a (global) count.
+    await waitFor(() => expect(screen.getByRole('button', { name: t.pfIndustry })).toHaveTextContent(/^التجزئة$/))
+    expect(screen.getByRole('button', { name: t.pfTechnology })).toHaveTextContent(/^Laravel$/)
+    expect(screen.getByRole('button', { name: t.pfPlatform })).toHaveTextContent(new RegExp(`^${t.platformLabels.android}$`))
+    expect(screen.getByRole('button', { name: t.pfStatus })).toHaveTextContent(new RegExp(`^${t.devStatus.completed}$`))
+  })
+
+  test('shows counts beside a filter only while no other filter is active, since they are global', async () => {
+    // QA M5: with an industry picked, the status select offered "In testing (2)" for an empty result.
+    renderAt('/portfolio?industry=retail')
+    await waitFor(() => expect(screen.getByRole('button', { name: t.pfIndustry })).toHaveTextContent('التجزئة (5)'))
+
+    fireEvent.click(screen.getByRole('button', { name: t.pfStatus }))
+    expect(screen.getByRole('option', { name: t.devStatus.completed })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /\(\d+\)/ })).toBeNull()
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' })
+
+    expect(screen.getByRole('button', { name: /^ويب/ })).toHaveAccessibleName('ويب')
+    // The hero still states the whole portfolio.
+    expect(screen.getByText(wholeText(t.pfIndex(14, 3)))).toBeInTheDocument()
+  })
+
+  test('hides the counts while a search is typed in, too', async () => {
+    renderAt('/portfolio?q=shop')
+    fireEvent.click(await screen.findByRole('button', { name: t.pfIndustry }))
+    expect(screen.getByRole('option', { name: 'التجزئة' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: new RegExp(`^${t.cats[0].l}`) })).toHaveAccessibleName(t.cats[0].l)
+  })
+
+  test('shows every count when nothing is filtered', async () => {
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: t.pfIndustry }))
+    expect(screen.getByRole('option', { name: 'التجزئة (5)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^ويب/ })).toHaveAccessibleName('ويب 8')
   })
 
   test('choosing a technology writes ?tech= and asks the API for that technology', async () => {

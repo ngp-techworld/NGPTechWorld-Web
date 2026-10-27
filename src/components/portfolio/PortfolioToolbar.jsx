@@ -73,7 +73,7 @@ function SearchBox({ value, onCommit, inputRef, clearSignal }) {
 }
 
 /** Category pills — the site's existing .pill style, with the facet count beside each label. */
-function CategoryPills({ value, facets, onSelect }) {
+function CategoryPills({ value, facets, onSelect, showCounts }) {
   const { t } = useLang()
   const counts = Array.isArray(facets?.categories) ? new Map(facets.categories.map((c) => [c.key, c.count])) : null
   // Only categories that have something published, once the counts are known — plus the one in
@@ -85,7 +85,7 @@ function CategoryPills({ value, facets, onSelect }) {
       {options.map((c) => {
         const v = c.v === 'all' ? '' : c.v
         const on = value === v
-        const count = c.v === 'all' ? facets?.totals?.projects : counts?.get(c.v)
+        const count = !showCounts ? null : c.v === 'all' ? facets?.totals?.projects : counts?.get(c.v)
         return (
           <button
             key={c.v}
@@ -125,6 +125,14 @@ function FacetSelect({ id, label, allLabel, value, options, onChange }) {
 const withCount = (label, count) => (count == null ? label : `${label} (${count})`)
 
 /**
+ * The facet counts are for the whole published portfolio, not for the current results. Beside a
+ * filter they are only true while that filter is the only one in play: with an industry picked, a
+ * status reading "In testing (2)" could lead to no results at all. So a filter shows its counts
+ * only when no other filter (and no search) is active. The hero's totals are unaffected.
+ */
+const othersActive = (filters, key) => Object.entries(filters).some(([k, v]) => k !== key && v)
+
+/**
  * Search, category pills and the four selects, plus the result count and "Clear filters".
  *
  * `facets` is null while loading and false when it failed. Without counts the platform and status
@@ -137,13 +145,14 @@ export default function PortfolioToolbar({ filters, facets, onChange, onClear, f
 
   // Any list the facets lack is treated as not known yet, never trusted to be there.
   const facetList = (key) => (Array.isArray(data?.[key]) ? data[key] : null)
-  const industries = (facetList('industries') ?? []).map((i) => ({ value: i.key, label: withCount(pick(i, 'name') || i.key, i.count) }))
-  const technologies = (facetList('technologies') ?? []).map((x) => ({ value: x.slug, label: withCount(x.name, x.count) }))
+  const counted = (key, count) => (othersActive(filters, key) ? null : count)
+  const industries = (facetList('industries') ?? []).map((i) => ({ value: i.key, label: withCount(pick(i, 'name') || i.key, counted('industry', i.count)) }))
+  const technologies = (facetList('technologies') ?? []).map((x) => ({ value: x.slug, label: withCount(x.name, counted('tech', x.count)) }))
   const platforms = facetList('platforms')
-    ? facetList('platforms').map((p) => ({ value: p.key, label: withCount(t.platformLabels[p.key] ?? p.key, p.count) }))
+    ? facetList('platforms').map((p) => ({ value: p.key, label: withCount(t.platformLabels[p.key] ?? p.key, counted('platform', p.count)) }))
     : PLATFORMS.map((p) => ({ value: p, label: t.platformLabels[p] }))
   const statuses = facetList('statuses')
-    ? facetList('statuses').map((s) => ({ value: s.key, label: withCount(t.devStatus[s.key] ?? s.key, s.count) }))
+    ? facetList('statuses').map((s) => ({ value: s.key, label: withCount(t.devStatus[s.key] ?? s.key, counted('status', s.count)) }))
     : PUBLIC_STATUSES.map((s) => ({ value: s, label: t.devStatus[s] }))
 
   return (
@@ -155,7 +164,7 @@ export default function PortfolioToolbar({ filters, facets, onChange, onClear, f
           inputRef={searchRef}
           clearSignal={clearSignal}
         />
-        <CategoryPills value={filters.category} facets={data} onSelect={(v) => onChange('category', v)} />
+        <CategoryPills value={filters.category} facets={data} showCounts={!othersActive(filters, 'category')} onSelect={(v) => onChange('category', v)} />
         <div className="pf-selects">
           <FacetSelect id="pf-industry" label={t.pfIndustry} allLabel={t.pfAllIndustries} value={filters.industry} options={industries} onChange={(v) => onChange('industry', v)} />
           <FacetSelect id="pf-tech" label={t.pfTechnology} allLabel={t.pfAllTechnologies} value={filters.tech} options={technologies} onChange={(v) => onChange('tech', v)} />
