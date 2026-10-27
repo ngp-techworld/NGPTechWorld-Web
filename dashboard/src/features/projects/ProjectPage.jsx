@@ -3,7 +3,7 @@ import { get, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams } from 'react-router-dom'
 import { Cpu, Database, FileStack, FileText, Gauge, Image as ImageIcon, Images, KeyRound, Link2, ListChecks, Rocket, Server, ShieldAlert, Users, Wrench } from 'lucide-react'
-import { GroupForm, industriesCatalog, registryStrings } from '@/features/registry/kit'
+import { GroupForm, industriesCatalog, localizeErrors, registryStrings } from '@/features/registry/kit'
 import { useCommon, useFormat, useStrings } from '@/i18n'
 import { applyServerErrors } from '@/lib/applyServerErrors'
 import { ApiError } from '@/lib/api'
@@ -59,8 +59,8 @@ export const PROJECT_TABS = [
   { key: 'data', group: 'sensitive', ability: 'viewSensitive', icon: Database, label: 'tabData', registry: true },
 ]
 
-// Without the registry (an older backend) the page behaves as before: public content, editable.
-const LEGACY_ABILITIES = { view: true, updatePublic: true }
+// Without the registry record, only what the parent could establish (ProjectEdit `fallbackFor`): read-only by default.
+const READ_ONLY = { view: true }
 
 /** The tab keys `abilities` lets the caller read. */
 export const visibleTabKeys = (abilities, hasRegistry) =>
@@ -97,9 +97,10 @@ const countErrors = (errors, fields) => fields.filter((name) => get(errors, name
  * original `PUT /projects/{id}`, partial: only changed fields are sent; both panels stay mounted so values and
  * server errors survive tab switches). Everything else is saved live: publication actions, the administration group,
  * members, and the registry tabs (each its own requests). `registry` is the registry record (abilities, operations
- * groups, completeness) or null when the registry API could not be read.
+ * groups, completeness) or null when the registry API could not be read; `fallbackAbilities` then say what the caller
+ * may do with the original record (read-only unless the parent knows better).
  */
-export function ProjectPage({ project, registry, onSubmit, saving = false }) {
+export function ProjectPage({ project, registry, fallbackAbilities = READ_ONLY, onSubmit, saving = false }) {
   const c = useCommon()
   const t = useStrings(strings)
   const rt = useStrings(registryTabStrings)
@@ -107,7 +108,7 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
   const f = useFormat()
   const env = useRegistryEnv()
   const hasRegistry = Boolean(registry)
-  const abilities = registry?.abilities ?? LEGACY_ABILITIES
+  const abilities = registry?.abilities ?? fallbackAbilities
   const canEdit = Boolean(abilities.updatePublic)
   const keys = useMemo(() => visibleTabKeys(abilities, hasRegistry), [abilities, hasRegistry])
   const [tab, setTab] = useActiveTab(keys)
@@ -165,7 +166,7 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
           err instanceof ApiError && err.status === 422
             ? new ApiError({ status: 422, message: err.message, errors: Object.fromEntries(Object.entries(err.errors).map(([key, messages]) => [toFormErrorKey(key), messages])), data: err.data })
             : err
-        if (applyServerErrors(setError, mapped)) reveal(Object.keys(mapped.errors))
+        if (applyServerErrors(setError, localizeErrors(mapped, r))) reveal(Object.keys(mapped.errors))
       }
     },
     (fieldErrors) => reveal(Object.keys(fieldErrors)),
@@ -215,7 +216,7 @@ export function ProjectPage({ project, registry, onSubmit, saving = false }) {
           {!canEdit ? <Alert tone="info">{rt.readOnlyContent}</Alert> : null}
           <form onSubmit={submit} noValidate aria-label={rt.formLabel} className="space-y-5">
             <fieldset disabled={!canEdit} className="min-w-0 space-y-5">
-              <GeneralFields form={form} isEdit showStatus={!hasRegistry} showFeatured={!hasRegistry} clientRequired={!hasRegistry} featuredNote={hasRegistry ? rt.featuredMoved : undefined} />
+              <GeneralFields form={form} isEdit showStatus={!hasRegistry} showFeatured={!hasRegistry} featuredNote={hasRegistry ? rt.featuredMoved : undefined} />
               {hasRegistry ? <RegistryPublicFields form={form} industries={industries} /> : null}
             </fieldset>
             {actions}

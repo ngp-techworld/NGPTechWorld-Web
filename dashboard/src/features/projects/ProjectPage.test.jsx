@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
 import { renderWithProviders, testUser } from '@/test/renderWithProviders'
 import ProjectEdit from './ProjectEdit'
-import { ABILITIES, legacyProject, registryRoutes } from './registryTestUtils'
+import { ABILITIES, legacyProject, registryRecord, registryRoutes } from './registryTestUtils'
 
 const path = '/projects/:id'
 const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent.replace(/\d+$/, '').trim())
@@ -73,9 +73,47 @@ describe('project page: tabs by abilities', () => {
     mockApi({ 'GET /projects/:id': () => ({ data: legacyProject() }), 'GET /registry/projects/:id': () => reply(404, { message: 'Not found.' }) })
     renderWithProviders(<ProjectEdit />, { route: '/projects/7', path })
 
-    expect(await screen.findByText(/The project registry could not be loaded/)).toBeInTheDocument()
+    expect(await screen.findByText(/This server has no project registry yet/)).toBeInTheDocument()
     expect(tabNames()).toEqual(['Overview', 'Media', 'Team', 'Links'])
     expect(screen.getByRole('switch', { name: /Featured project/ })).toBeInTheDocument()
+  })
+
+  it('shows a failed registry request with Retry and keeps the page read-only (no invented abilities)', async () => {
+    const api = mockApi({ ...registryRoutes(), 'GET /registry/projects/:id': () => reply(500, { message: 'boom' }) })
+    const { user } = renderWithProviders(<ProjectEdit />, { route: '/projects/7', path, authUser: { ...manager, registry_role: 'viewer' } })
+
+    expect(await screen.findByText(/could not be loaded, so its public sections are shown read-only/)).toBeInTheDocument()
+    expect(tabNames()).toEqual(['Overview', 'Media', 'Team', 'Links'])
+    expect(screen.getByLabelText(/^Client/)).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+
+    api.on('GET /registry/projects/:id', () => ({ data: registryRecord({ abilities: ABILITIES.viewer }) }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('tab', { name: 'Non-functional' })).toBeInTheDocument()
+  })
+
+  it('explains the two-step sign-in gate and keeps the public tabs from the original record', async () => {
+    mockApi({ ...registryRoutes(), 'GET /registry/projects/:id': () => reply(403, { message: 'Turn on two-factor authentication.', code: 'mfa_enrollment_required' }) })
+    renderWithProviders(<ProjectEdit />, { route: '/projects/7', path, authUser: { ...manager, permissions: ['projects'] } })
+
+    expect(await screen.findByText('Two-step sign-in is required to open internal and sensitive project data.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Turn it on' })).toHaveAttribute('href', '/account#mfa')
+    expect(tabNames()).toEqual(['Overview', 'Media', 'Team', 'Links'])
+    expect(screen.getByLabelText(/^Client/)).toBeEnabled() // a projects-section editor may still edit the public content
+  })
+
+  it('shows the same notice when the registry withholds its internal tabs until enrolment', async () => {
+    renderPage({ abilities: ABILITIES.contentEditor, over: { mfa_enrollment_required: true } })
+    expect(await screen.findByText('Two-step sign-in is required to open internal and sensitive project data.')).toBeInTheDocument()
+    expect(tabNames()).toEqual(PUBLIC)
+  })
+
+  it('keeps an older backend (no registry route) read-only for an account without the projects section', async () => {
+    mockApi({ 'GET /projects/:id': () => ({ data: legacyProject() }), 'GET /registry/projects/:id': () => reply(404, { message: 'Not found.' }) })
+    renderWithProviders(<ProjectEdit />, { route: '/projects/7', path, authUser: { ...manager, registry_role: 'viewer' } })
+
+    expect(await screen.findByText(/This server has no project registry yet/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Client/)).toBeDisabled()
   })
 
   it('names the groups and tabs in Arabic', async () => {

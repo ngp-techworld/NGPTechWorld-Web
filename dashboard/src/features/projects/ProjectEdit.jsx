@@ -3,10 +3,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { SearchX } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
+import { MfaNotice } from '@/app/MfaNotice'
 import { canAccessFeature } from '@/app/permissions'
 import { registryPath, registryProjects, useRefreshRegistry } from '@/features/registry/kit/hooks'
 import { useCommon, useLanguage, useStrings } from '@/i18n'
-import { errorText } from '@/lib/errors'
+import { errorText, isMfaRequired } from '@/lib/errors'
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from '@/ui'
 import { projects } from './hooks'
 import strings from './strings'
@@ -15,9 +16,21 @@ import strings from './strings'
 const ProjectPage = lazy(() => import('./ProjectPage').then((module) => ({ default: module.ProjectPage })))
 
 /**
+ * How the page is shown when the registry record is missing, from why it is missing. Only a 404 means "this backend
+ * has no registry" (the original page, editable as the original admin endpoints allow); the two-step sign-in gate keeps
+ * the public tabs from the original record; any other failure is shown with Retry and nothing is editable — the page
+ * never invents abilities the server did not grant.
+ */
+function fallbackFor(error, user) {
+  const editsContent = canAccessFeature({ id: 'projects' }, user) // the original endpoints' own rule (ProjectPolicy)
+  if (error?.status === 404) return { mode: 'legacy', abilities: { view: true, updatePublic: editsContent } }
+  if (isMfaRequired(error)) return { mode: 'mfa', abilities: { view: true, updatePublic: editsContent } }
+  return { mode: 'error', abilities: { view: true } }
+}
+
+/**
  * Loads the project twice, in parallel: the original admin record (`GET /projects/{id}`: the form, the team and link
- * counts) and the registry record (`GET /registry/projects/{id}`: abilities, operations groups, completeness). When the
- * registry cannot be read (an older backend) the page still works with its original public tabs.
+ * counts) and the registry record (`GET /registry/projects/{id}`: abilities, operations groups, completeness).
  */
 export default function ProjectEdit() {
   const { id } = useParams()
@@ -70,6 +83,8 @@ export default function ProjectEdit() {
   if (!project) return null
 
   const record = registry.data ?? null
+  const fallback = record ? null : fallbackFor(registry.error, user)
+  const mode = record ? 'registry' : fallback.mode
   // resolves with the saved project so the form can re-base itself on it
   const onSubmit = (payload) => update.mutateAsync({ id: project.id, data: payload })
 
@@ -86,12 +101,34 @@ export default function ProjectEdit() {
         backTo={backTo}
         backLabel={t.title}
       />
-      {!record ? (
+      {mode === 'legacy' ? (
         <Alert tone="info" className="mb-5">
           {t.registryUnavailable}
         </Alert>
       ) : null}
-      <ProjectPage key={`${project.id}-${record ? 'registry' : 'legacy'}`} project={project} registry={record} onSubmit={onSubmit} saving={update.isPending} />
+      {mode === 'mfa' || record?.mfa_enrollment_required ? <MfaNotice className="mb-5" /> : null}
+      {mode === 'error' ? (
+        <Alert
+          tone="danger"
+          className="mb-5"
+          title={t.registryFailed}
+          action={
+            <Button size="sm" variant="secondary" onClick={() => registry.refetch()} loading={registry.isFetching}>
+              {c.retry}
+            </Button>
+          }
+        >
+          {errorText(registry.error, c)}
+        </Alert>
+      ) : null}
+      <ProjectPage
+        key={`${project.id}-${mode}`}
+        project={project}
+        registry={record}
+        fallbackAbilities={fallback?.abilities}
+        onSubmit={onSubmit}
+        saving={update.isPending}
+      />
     </Suspense>
   )
 }

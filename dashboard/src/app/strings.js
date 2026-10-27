@@ -23,6 +23,9 @@ export default {
     serverUnreachable: 'تعذّر الاتصال بالخادم',
     serverUnreachableHint: 'تأكد من تشغيل الخادم واتصالك بالإنترنت ثم أعد المحاولة.',
     brandTagline: 'لوحة التحكم',
+    mfaNotice: 'التحقق بخطوتين مطلوب لفتح البيانات الداخلية والحساسة للمشاريع.',
+    mfaNoticeAction: 'تفعيله الآن',
+    mfaNoticeDismiss: 'إخفاء التنبيه',
   },
   en: {
     loginTitle: 'Sign in',
@@ -47,5 +50,8 @@ export default {
     serverUnreachable: 'Cannot reach the server',
     serverUnreachableHint: 'Make sure the server is running and you are online, then try again.',
     brandTagline: 'Dashboard',
+    mfaNotice: 'Two-step sign-in is required to open internal and sensitive project data.',
+    mfaNoticeAction: 'Turn it on',
+    mfaNoticeDismiss: 'Hide this notice',
   },
 }
