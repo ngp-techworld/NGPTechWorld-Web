@@ -41,8 +41,10 @@ export function renderWithProviders(ui, { route = '/', path, lang = 'en', queryC
     isAuthenticated: Boolean(authUser),
     isLoading: false,
     login: vi.fn(),
+    loginMfa: vi.fn(),
     logout: vi.fn(),
     updateUser: vi.fn(),
+    refreshUser: vi.fn(async () => authUser),
     retry: vi.fn(),
     ...auth,
   }

@@ -50,12 +50,48 @@ export function AuthProvider({ children }) {
     }
   }, [attempt, clearSession])
 
-  const login = useCallback(async (email, password) => {
-    const res = await api.post('/auth/login', { email, password, device_name: 'ngp-dashboard' }, { auth: false })
-    setToken(res.data.token)
-    setUser(res.data.user)
+  // A token was issued: keep it, then read the full account from GET /auth/me (the login answer lacks the two-step
+  // sign-in flags); if that read fails, the login's own copy of the user is used.
+  const startSession = useCallback(async ({ token, user: loginUser }) => {
+    setToken(token)
+    let account = loginUser
+    try {
+      account = (await api.get('/auth/me')).data ?? loginUser
+    } catch {
+      /* keep the login response's user */
+    }
+    setUser(account)
     setStatus('authenticated')
-    return res.data.user
+    return account
+  }, [])
+
+  /**
+   * Step one. Resolves with the user, or — for an account with two-step sign-in — with
+   * `{ mfaRequired: true, challenge, expiresIn }` (no token yet; finish with loginMfa).
+   */
+  const login = useCallback(
+    async (email, password) => {
+      const res = await api.post('/auth/login', { email, password, device_name: 'ngp-dashboard' }, { auth: false })
+      if (res.data?.mfa_required) return { mfaRequired: true, challenge: res.data.challenge, expiresIn: res.data.expires_in }
+      return startSession(res.data)
+    },
+    [startSession],
+  )
+
+  /** Step two: the 6-digit authenticator code, or a recovery code. */
+  const loginMfa = useCallback(
+    async (challenge, code) => {
+      const res = await api.post('/auth/login/mfa', { challenge, code }, { auth: false })
+      return startSession(res.data)
+    },
+    [startSession],
+  )
+
+  /** Re-read the signed-in account (after turning two-step sign-in on or off). */
+  const refreshUser = useCallback(async () => {
+    const res = await api.get('/auth/me')
+    setUser(res.data)
+    return res.data
   }, [])
 
   const logout = useCallback(async () => {
@@ -71,15 +107,15 @@ export function AuthProvider({ children }) {
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   const value = useMemo(
-    () => ({ user, status, isAuthenticated: status === 'authenticated', isLoading: status === 'loading', login, logout, updateUser, retry }),
-    [user, status, login, logout, updateUser, retry],
+    () => ({ user, status, isAuthenticated: status === 'authenticated', isLoading: status === 'loading', login, loginMfa, logout, updateUser, refreshUser, retry }),
+    [user, status, login, loginMfa, logout, updateUser, refreshUser, retry],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 /**
- * const { user, login, logout, updateUser, status, isAuthenticated } = useAuth()
+ * const { user, login, loginMfa, logout, updateUser, refreshUser, status, isAuthenticated } = useAuth()
  * `updateUser({ name })` refreshes the name shown in the top bar after a profile update.
  */
 export function useAuth() {
