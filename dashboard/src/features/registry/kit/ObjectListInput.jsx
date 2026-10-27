@@ -61,6 +61,7 @@ export function ObjectListInput({ label, itemLabel, fields, value = [], onChange
                     </div>
                   ) : null}
                 </div>
+                {errors?.[index]?.message ? <p className="mb-2 text-xs font-medium text-danger">{errors[index].message}</p> : null}
                 <div className="grid gap-3 md:grid-cols-2">
                   {fields.map((sub) => (
                     <SubControl

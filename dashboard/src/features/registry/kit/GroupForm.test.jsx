@@ -5,6 +5,9 @@ import { renderWithProviders } from '@/test/renderWithProviders'
 import { GroupForm } from './GroupForm'
 import { toOptions } from './form'
 import { registryProjects } from './hooks'
+import { deploymentFields } from '@/features/projects/registry/groups'
+import tabStrings from '@/features/projects/registry/strings'
+import kitStrings from './strings'
 
 const fields = [
   { name: 'owner_name', type: 'text', label: 'Owner', max: 255 },
@@ -105,5 +108,65 @@ describe('GroupForm', () => {
     expect(form().queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(form().queryByRole('button', { name: 'Add Developer' })).not.toBeInTheDocument()
     expect(form().getByText('Read only: you cannot change this.')).toBeInTheDocument()
+  })
+})
+
+describe('GroupForm with the real deployment fields', () => {
+  const fieldsOf = deploymentFields({ t: tabStrings.en, r: kitStrings.en })
+  const empty = { deploy_method: null, ci_cd_provider: null, workflows: null, build_artifacts: null, release_strategy: null, release_version: null, rollback_procedure: null, deploy_verification: null, deploy_permissions: null, deploy_responsible_admin: null, run_requirements: null }
+  const renderDeployment = () => renderWithProviders(<GroupForm projectId={7} group="deployment" title="Deployment" fields={fieldsOf} values={empty} canWrite />)
+  const deployment = () => within(screen.getByRole('region', { name: 'Deployment' }))
+
+  async function addSoftware(user, name) {
+    await user.click(deployment().getByRole('button', { name: 'Add Software' }))
+    await user.type(within(deployment().getByRole('listitem', { name: 'Software 1' })).getByLabelText(/^Name/), name)
+  }
+
+  it('sends the run requirements as one object', async () => {
+    const api = mockApi({ 'PUT /registry/projects/:id/operations/:group': ({ body }) => ({ data: { group: 'deployment', values: { ...empty, ...body } } }) })
+    const { user } = renderDeployment()
+
+    await addSoftware(user, 'PHP')
+    await user.click(deployment().getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api.calls('PUT')).toHaveLength(1))
+    expect(api.calls('PUT')[0].body).toEqual({ run_requirements: { software: [{ name: 'PHP', version: null, evidence: null }], package_managers: [] } })
+  })
+
+  it('shows a secret refused on the run requirements as a whole next to Save, not only as a toast', async () => {
+    mockApi({
+      'PUT /registry/projects/:id/operations/:group': () =>
+        validationError({ run_requirements: ['The run requirements looks like it contains a password, key or token. Store it in the vault and record its vault:// reference instead.'] }),
+    })
+    const { user } = renderDeployment()
+
+    await addSoftware(user, 'password=Secret12345')
+    await user.click(deployment().getByRole('button', { name: 'Save' }))
+
+    const alert = await deployment().findByRole('alert')
+    expect(alert).toHaveTextContent('Not saved:')
+    expect(alert).toHaveTextContent('This looks like a password, key or token. Store the secret in the vault')
+    expect(screen.queryByText('Please fix the highlighted fields.')).not.toBeInTheDocument()
+  })
+
+  it('puts an error about one list item under that item', async () => {
+    mockApi({ 'PUT /registry/projects/:id/operations/:group': () => validationError({ 'run_requirements.software.0': ['The run requirements.software.0 field must be an array.'] }) })
+    const { user } = renderDeployment()
+
+    await addSoftware(user, 'Node')
+    await user.click(deployment().getByRole('button', { name: 'Save' }))
+
+    expect(await within(deployment().getByRole('listitem', { name: 'Software 1' })).findByText('The run requirements.software.0 field must be an array.')).toBeInTheDocument()
+  })
+
+  it('says when nothing changed instead of doing nothing', async () => {
+    const api = mockApi({})
+    const { user } = renderDeployment()
+
+    await user.type(deployment().getByLabelText('CI/CD provider'), '   ') // dirty, but blank once trimmed
+    await user.click(deployment().getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Nothing to save.')).toBeInTheDocument()
+    expect(api.requests).toHaveLength(0)
   })
 })

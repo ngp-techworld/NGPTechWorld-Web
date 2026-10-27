@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCommon, useStrings } from '@/i18n'
@@ -7,7 +7,7 @@ import { applyServerErrors } from '@/lib/applyServerErrors'
 import { errorText } from '@/lib/errors'
 import { Alert, Card, FormActions, useToast } from '@/ui'
 import { FieldGrid } from './RegistryField'
-import { changedPayload, makeResolver, recordToValues } from './form'
+import { belongsToForm, changedPayload, makeResolver, recordToValues } from './form'
 import { overviewKey, registryPath, registryProjects } from './hooks'
 import { localizeErrors } from './serverErrors'
 import registryStrings from './strings'
@@ -31,6 +31,8 @@ export function GroupForm({ projectId, group, values, fields, canWrite = false, 
   if (baseline.current === null) baseline.current = recordToValues(fields, values ?? {})
 
   const form = useForm({ resolver, defaultValues: baseline.current })
+  // 422 messages for keys no input shows (a parent such as `run_requirements`): listed next to Save
+  const [otherErrors, setOtherErrors] = useState([])
   const {
     handleSubmit,
     setError,
@@ -42,7 +44,12 @@ export function GroupForm({ projectId, group, values, fields, canWrite = false, 
 
   const submit = handleSubmit(async (formValues) => {
     const body = changedPayload(fields, baseline.current, formValues)
-    if (!Object.keys(body).length) return
+    setOtherErrors([])
+    if (!Object.keys(body).length) {
+      toast.info(r.nothingChanged)
+      reset(formValues)
+      return
+    }
     try {
       const saved = await save.mutateAsync(body)
       const next = recordToValues(fields, saved.values ?? {})
@@ -55,8 +62,13 @@ export function GroupForm({ projectId, group, values, fields, canWrite = false, 
       queryClient.invalidateQueries({ queryKey: registryProjects.keys.lists })
       queryClient.invalidateQueries({ queryKey: overviewKey })
     } catch (err) {
-      if (applyServerErrors(setError, localizeErrors(err, r))) toast.error(c.validationFailed)
-      else toast.error(errorText(err, c))
+      const localized = localizeErrors(err, r)
+      if (applyServerErrors(setError, localized)) {
+        const keys = Object.keys(localized.errors)
+        setOtherErrors(keys.filter((key) => !belongsToForm(fields, key)).map((key) => localized.errors[key][0]))
+        // a toast only points at highlighted fields; messages without a field are in the list above Save
+        if (keys.some((key) => belongsToForm(fields, key))) toast.error(c.validationFailed)
+      } else toast.error(errorText(err, c))
     }
   })
 
@@ -66,6 +78,15 @@ export function GroupForm({ projectId, group, values, fields, canWrite = false, 
         <fieldset disabled={!canWrite || save.isPending} className="min-w-0">
           <FieldGrid fields={fields} form={form} ctx={ctx} disabled={!canWrite} />
         </fieldset>
+        {otherErrors.length ? (
+          <Alert tone="danger" title={r.otherErrors}>
+            <ul className="list-inside list-disc">
+              {otherErrors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </Alert>
+        ) : null}
         {canWrite ? <FormActions saving={save.isPending} dirty={isDirty} /> : <Alert tone="info">{r.readOnly}</Alert>}
       </form>
     </Card>
