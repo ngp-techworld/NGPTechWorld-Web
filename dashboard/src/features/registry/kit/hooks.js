@@ -55,20 +55,3 @@ export function useProjectAction(projectId) {
     },
   })
 }
-
-/** DELETE /registry/projects/{id} {confirm_slug} (super admins only). */
-export function useDeleteRegistryProject(projectId) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (confirmSlug) => api.delete(registryPath(projectId), { body: { confirm_slug: confirmSlug } }),
-    onSuccess: async () => {
-      queryClient.removeQueries({ queryKey: registryProjects.keys.one(projectId) })
-      queryClient.removeQueries({ queryKey: [...legacyProjects, 'one', String(projectId)] })
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: registryProjects.keys.lists }),
-        queryClient.invalidateQueries({ queryKey: overviewKey }),
-        queryClient.invalidateQueries({ queryKey: [...legacyProjects, 'list'] }),
-      ])
-    },
-  })
-}

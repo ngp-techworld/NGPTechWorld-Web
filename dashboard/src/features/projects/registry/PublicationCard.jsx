@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Archive, ArchiveRestore, CheckCircle2, CircleAlert, Eye, EyeOff, Star, StarOff, Trash2 } from 'lucide-react'
-import { COMPLETENESS_GROUPS, actionErrorText, publicationLabels, useDeleteRegistryProject, useProjectAction } from '@/features/registry/kit'
-import { errorText } from '@/lib/errors'
+import { COMPLETENESS_GROUPS, actionErrorText, publicationLabels, useProjectAction } from '@/features/registry/kit'
 import { cx } from '@/lib/cx'
-import { Alert, Badge, Button, Card, Field, Input, Modal, useConfirm, useToast } from '@/ui'
+import { Alert, Badge, Button, Card, useConfirm, useToast } from '@/ui'
+import { DeleteProjectDialog } from '../DeleteProjectDialog'
 import { useRegistryEnv } from './useRegistryEnv'
 
 function MissingList({ keys, labels }) {
@@ -14,56 +14,6 @@ function MissingList({ keys, labels }) {
         <li key={key}>{labels[key] ?? key}</li>
       ))}
     </ul>
-  )
-}
-
-/** Delete with a typed-slug confirmation (`DELETE registry/projects/{id}` `{confirm_slug}`), super admins only. */
-function DeleteProjectDialog({ open, onClose, registry }) {
-  const { t, c } = useRegistryEnv()
-  const toast = useToast()
-  const navigate = useNavigate()
-  const remove = useDeleteRegistryProject(registry.id)
-  const [typed, setTyped] = useState('')
-  const [error, setError] = useState('')
-
-  const submit = async (event) => {
-    event.preventDefault()
-    setError('')
-    try {
-      await remove.mutateAsync(typed)
-      toast.success(t.deleted)
-      navigate('/registry/projects', { replace: true })
-    } catch (err) {
-      if (err.status === 422) setError(t.deleteSlugMismatch)
-      else toast.error(errorText(err, c))
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t.deleteDialogTitle}
-      description={t.deleteDialogMessage}
-      size="md"
-      closeOnBackdrop={false}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={remove.isPending}>
-            {c.cancel}
-          </Button>
-          <Button type="submit" form="delete-project-form" variant="danger" icon={Trash2} loading={remove.isPending} disabled={typed !== registry.slug}>
-            {c.delete}
-          </Button>
-        </>
-      }
-    >
-      <form id="delete-project-form" onSubmit={submit} noValidate className="pb-2">
-        <Field label={t.deleteTypeSlug(registry.slug)} error={error}>
-          <Input value={typed} onChange={(event) => setTyped(event.target.value)} dir="ltr" autoComplete="off" spellCheck={false} placeholder={registry.slug} />
-        </Field>
-      </form>
-    </Modal>
   )
 }
 
@@ -115,6 +65,7 @@ export function PublicationCard({ registry }) {
   const { t, r, c, f } = useRegistryEnv()
   const toast = useToast()
   const confirm = useConfirm()
+  const navigate = useNavigate()
   const action = useProjectAction(registry.id)
   const [refused, setRefused] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -221,7 +172,9 @@ export function PublicationCard({ registry }) {
           <Completeness completeness={registry.completeness} />
         </div>
       </div>
-      {abilities.delete ? <DeleteProjectDialog key={String(deleting)} open={deleting} onClose={() => setDeleting(false)} registry={registry} /> : null}
+      {abilities.delete ? (
+        <DeleteProjectDialog project={deleting ? registry : null} onClose={() => setDeleting(false)} onDeleted={() => navigate('/registry/projects', { replace: true })} />
+      ) : null}
     </Card>
   )
 }

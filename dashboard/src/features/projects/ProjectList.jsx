@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { FolderKanban, Link2, ListOrdered, Pencil, Plus, Trash2, Users } from 'lucide-react'
+import { useAuth } from '@/app/AuthProvider'
 import { useCommon, useFormat, useLanguage, useStrings } from '@/i18n'
 import { errorText } from '@/lib/errors'
 import { useListParams } from '@/lib/useListParams'
-import { Alert, Avatar, Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, Select, SortableList, StatusBadge, Switch, useConfirm } from '@/ui'
+import { Alert, Avatar, Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, Select, SortableList, StatusBadge, Switch, useToast } from '@/ui'
+import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { projects } from './hooks'
 import { CATEGORIES, STATUSES } from './schema'
 import strings from './strings'
 
 const DEFAULTS = { per_page: 15, sort: 'order', dir: 'asc' }
+const DEV_TONES = { idea: 'neutral', planning: 'info', in_development: 'warning', testing: 'warning', completed: 'success', maintenance: 'info', paused: 'neutral', archived: 'neutral' }
 // The API sets `order` = position of every id it receives, so reordering needs the WHOLE list in one page.
 const REORDER_LIMIT = 200
 
@@ -17,14 +21,25 @@ export default function ProjectList() {
   const c = useCommon()
   const f = useFormat()
   const { lang, pickField } = useLanguage()
-  const confirm = useConfirm()
+  const toast = useToast()
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const [deleting, setDeleting] = useState(null)
 
   const [reordering, setReordering] = useState(false)
   const list = useListParams(DEFAULTS)
   const query = projects.useList(reordering ? { per_page: REORDER_LIMIT, sort: 'order', dir: 'asc' } : list.params)
   const { rows, meta } = query
-  const update = projects.useUpdate()
-  const remove = projects.useDelete()
+  // a featured change moves the registry's lists and counters too; an archived project cannot be featured (422)
+  const update = projects.useUpdate({
+    silent: true,
+    onSuccess: () => {
+      toast.success(c.saved)
+      queryClient.invalidateQueries({ queryKey: ['crud', '/registry/projects'] })
+      queryClient.invalidateQueries({ queryKey: ['registry', 'overview'] })
+    },
+    onError: (err) => toast.error(err?.status === 422 && err.errors?.featured ? t.featuredArchived : errorText(err, c)),
+  })
   const reorder = projects.useReorder()
 
   const canReorder = !meta || meta.total <= REORDER_LIMIT
@@ -42,10 +57,6 @@ export default function ProjectList() {
   // while the toggle request is running show the value the user asked for
   const featuredOf = (row) => (update.isPending && update.variables?.id === row.id ? update.variables.data.featured : row.featured)
 
-  const onDelete = async (row) => {
-    const ok = await confirm({ title: t.deleteTitle, message: t.deleteMessage(pickField(row, 'name')), confirmLabel: c.delete })
-    if (ok) remove.mutate(row.id)
-  }
 
   const thumb = (row) => <Avatar src={row.cover_image_url} name={pickField(row, 'name')} alt="" shape="rounded" />
 
@@ -90,7 +101,34 @@ export default function ProjectList() {
       ),
     },
     { key: 'year', header: t.colYear, sortable: true, hideBelow: 'md', cell: (row) => <span className="tabular-nums">{row.year}</span> },
-    { key: 'status', header: c.status, sortable: true, cell: (row) => <StatusBadge status={row.status} statuses={statusBadges} /> },
+    {
+      key: 'status',
+      header: c.status,
+      sortable: true,
+      // the registry's development status when the API sends it, else the original two-value status
+      cell: (row) =>
+        row.development_status ? (
+          <Badge tone={DEV_TONES[row.development_status] ?? 'neutral'}>{t.developmentStatuses[row.development_status] ?? row.development_status}</Badge>
+        ) : (
+          <StatusBadge status={row.status} statuses={statusBadges} />
+        ),
+    },
+    {
+      key: 'publication_status',
+      header: t.colPublication,
+      hideBelow: 'sm',
+      cell: (row) =>
+        row.publication_status || row.archived_at ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.publication_status ? (
+              <Badge tone={row.publication_status === 'published' ? 'success' : 'neutral'} dot>
+                {t.publicationStatuses[row.publication_status] ?? row.publication_status}
+              </Badge>
+            ) : null}
+            {row.archived_at ? <Badge tone="warning">{t.archivedBadge}</Badge> : null}
+          </div>
+        ) : null,
+    },
     {
       key: 'featured',
       header: t.colFeatured,
@@ -100,6 +138,9 @@ export default function ProjectList() {
           checked={Boolean(featuredOf(row))}
           onChange={(featured) => update.mutate({ id: row.id, data: { featured } })}
           aria-label={t.featuredToggle(pickField(row, 'name'))}
+          // never offer featuring an archived project (the API refuses it); un-featuring stays possible
+          disabled={Boolean(row.archived_at) && !row.featured}
+          title={row.archived_at ? t.featuredArchived : undefined}
         />
       ),
     },
@@ -129,7 +170,8 @@ export default function ProjectList() {
 
   const rowActions = (row) => [
     { key: 'edit', label: c.edit, icon: Pencil, to: `/projects/${row.id}` },
-    { key: 'delete', label: c.delete, icon: Trash2, tone: 'danger', onClick: () => onDelete(row), disabled: remove.isPending },
+    // super admins only (ProjectPolicy::delete), always with the typed slug
+    { key: 'delete', label: c.delete, icon: Trash2, tone: 'danger', hidden: !user?.is_super_admin, onClick: () => setDeleting(row) },
   ]
 
   const newButton = (
@@ -241,6 +283,7 @@ export default function ProjectList() {
           <Pagination meta={meta} onPageChange={list.setPage} onPerPageChange={list.setPerPage} />
         </div>
       )}
+      <DeleteProjectDialog project={deleting} onClose={() => setDeleting(null)} />
     </>
   )
 }

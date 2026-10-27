@@ -85,11 +85,6 @@ export default {
     completenessScore: (n) => `${n}٪`,
     completeGroup: 'مكتمل',
     missingCount: (n) => (n === 1 ? 'ينقصه بند واحد' : n === 2 ? 'ينقصه بندان' : `ينقصه ${n} بنود`),
-    deleteDialogTitle: 'حذف المشروع نهائيًا',
-    deleteDialogMessage: 'يُحذف المشروع وكل بياناته في السجل (الميزات والصور والمستندات والخوادم والحسابات…) نهائيًا، ولا يمكن التراجع عن ذلك.',
-    deleteTypeSlug: (slug) => `اكتب الرابط المختصر «${slug}» للتأكيد`,
-    deleteSlugMismatch: 'الرابط المختصر غير مطابق.',
-    deleted: 'تم حذف المشروع',
 
     // administration & members
     administrationTitle: 'الإدارة',
@@ -517,11 +512,6 @@ export default {
     completenessScore: (n) => `${n}%`,
     completeGroup: 'Complete',
     missingCount: (n) => (n === 1 ? '1 missing' : `${n} missing`),
-    deleteDialogTitle: 'Delete the project',
-    deleteDialogMessage: 'The project and every registry record (features, screenshots, documents, servers, accounts…) are deleted for good. This cannot be undone.',
-    deleteTypeSlug: (slug) => `Type the slug “${slug}” to confirm`,
-    deleteSlugMismatch: 'The slug does not match.',
-    deleted: 'Project deleted',
 
     administrationTitle: 'Administration',
     administrationDescription: 'Who owns the project, who works on it and who supports it (internal).',
