@@ -6,7 +6,9 @@ import registryStrings from './strings'
 
 function SubControl({ field, value, onChange, error, disabled, ctx }) {
   const r = useStrings(registryStrings)
-  const common = { value: value ?? '', disabled, dir: field.dir, onChange: (event) => onChange(event.target.value) }
+  // free text follows what is typed (English content in the Arabic UI keeps its punctuation in place)
+  const typed = field.type !== 'select' && field.type !== 'number'
+  const common = { value: value ?? '', disabled, dir: field.dir ?? (typed ? 'auto' : undefined), onChange: (event) => onChange(event.target.value) }
   let control
   if (field.type === 'select') {
     const options = typeof field.options === 'function' ? field.options(ctx) : field.options

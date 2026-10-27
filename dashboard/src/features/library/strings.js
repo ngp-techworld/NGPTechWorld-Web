@@ -1,4 +1,6 @@
 // Feature strings: { ar: {…}, en: {…} }. Generic words (save, cancel, delete, "Active"…) come from `useCommon()`.
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     title: 'المكتبة',
@@ -42,7 +44,7 @@ export default {
 
     sectionStatus: 'الحالة والرابط',
     slug: 'الرابط (Slug)',
-    slugHint: 'يظهر في رابط الصفحة: /library/الرابط. اتركه فارغًا لتوليده تلقائيًا من العنوان الإنجليزي.',
+    slugHint: `يظهر في رابط الصفحة: ${ltr('/library/')}الرابط. اتركه فارغًا لتوليده تلقائيًا من العنوان الإنجليزي.`,
     allowDownload: 'السماح بالتحميل',
     allowDownloadHint: 'عند إيقافه يمكن قراءة الكتاب على الموقع فقط، ويختفي زر «تحميل».',
     activeLabel: 'ظاهر في الموقع',

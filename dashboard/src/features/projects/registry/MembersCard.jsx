@@ -52,7 +52,7 @@ const membersConfig = ({ t, r }, me) => ({
       cell: (row) => (
         <div className="min-w-0">
           <p className="font-semibold">
-            {row.user?.name ?? `#${row.user_id}`} {row.user_id === me?.id ? <Badge tone="gold">{t.memberYou}</Badge> : null}
+            <bdi>{row.user?.name ?? `#${row.user_id}`}</bdi> {row.user_id === me?.id ? <Badge tone="gold">{t.memberYou}</Badge> : null}
           </p>
           {row.user?.email ? (
             <p className="text-xs text-muted">

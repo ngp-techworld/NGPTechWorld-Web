@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileArchive, FolderOpen, FolderUp } from 'lucide-react'
 import { useFormat, useStrings } from '@/i18n'
 import { isUnreadableResponse } from '@/lib/api'
+import { withLtr } from '@/lib/bidi'
 import { cx } from '@/lib/cx'
 import { Alert, Button, Card } from '@/ui'
 import { importBatches, uploadPackage } from './hooks'
@@ -228,7 +229,7 @@ export function UploadCard() {
           <ol className="mt-2 list-inside list-decimal space-y-1.5 text-sm text-soft">
             {t.howSteps.map((step) => (
               <li key={step}>
-                <bdi>{step}</bdi>
+                <bdi>{withLtr(step, t.howPaths, 'whitespace-nowrap font-mono text-[13px]')}</bdi>
               </li>
             ))}
           </ol>

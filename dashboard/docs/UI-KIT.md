@@ -386,7 +386,15 @@ The app is Arabic-first: `<html dir="rtl">` unless the user toggled English; `La
 * Directional icons (arrows, chevrons) must mirror: add `flipRtl` (`rtl:-scale-x-100`) to them. Symmetric icons do not.
 * Latin-only content (emails, URLs, slugs, phone numbers, code) → `dir="ltr"` (Input does it for email/url/tel/number).
   Passwords are typed in either script, so `PasswordInput` follows the page's own direction instead.
-  Bilingual content boxes: Arabic `dir="rtl"`, English `dir="ltr"` (BilingualField does it). Mixed user text in cells: `dir="auto"`.
+  Bilingual content boxes: Arabic `dir="rtl"`, English `dir="ltr"` (BilingualField does it). Mixed user text in cells: `dir="auto"`
+  or `<bdi>` (keeps the cell's alignment); free-text inputs and textareas of the registry forms are `dir="auto"`.
+* A Latin snippet that starts or ends with punctuation (`vault://`, `ngp-portfolio/`, `.zip`, `http://`) inside an Arabic
+  sentence loses its punctuation to the sentence (`//:vault`). In JSX wrap it in `<bdi dir="ltr">` (or fill a template
+  with `withLtr('… {0} …', [snippet])` from `@/lib/bidi`); in a plain string (strings.js, toasts, field errors) use
+  `ltr(snippet)`, the invisible isolate (LRI … PDI) that does the same. Field errors and toasts are isolated already,
+  so an English server message keeps its full stop on the right side.
+* Vault references are always shaped `vault://ngp/<slug>/<env>/<item>` (e.g. `vault://ngp/dawri/production/db`), in
+  examples, hints and placeholders alike.
 * Layout with flex/grid keeps DOM order and flips by itself — do not reverse arrays for RTL.
 * Numbers/dates: `useFormat()` (Latin digits). Do not build date strings by hand.
 * Keyboard: Tabs and menus already mirror the arrow keys; if you build something with left/right arrows, read `dir` from `useLanguage()`.

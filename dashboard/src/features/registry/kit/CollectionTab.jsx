@@ -98,7 +98,9 @@ function RecordForm({ config, record, ctx, canWrite, onSubmit, onDirtyChange }) 
         <Alert tone="danger" title={r.otherErrors}>
           <ul className="list-inside list-disc">
             {otherErrors.map((message) => (
-              <li key={message}>{message}</li>
+              <li key={message}>
+                <bdi>{message}</bdi>
+              </li>
             ))}
           </ul>
         </Alert>

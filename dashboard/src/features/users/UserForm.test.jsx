@@ -65,7 +65,7 @@ describe('UserCreate', () => {
     await user.type(password(), 'short')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('Enter a valid email address', { selector: 'p' })).toBeInTheDocument()
+    expect(await screen.findByText('Enter a valid email address', { selector: 'p > bdi' })).toBeInTheDocument()
     expect(screen.getByText('At least 8 characters')).toBeInTheDocument()
     expect(byLabel('Email')).toHaveAttribute('aria-invalid', 'true')
     expect(server.requests).toHaveLength(0)
@@ -136,7 +136,7 @@ describe('UserCreate', () => {
     await user.type(byLabel('البريد الإلكتروني'), 'not-an-email')
     await user.click(screen.getByRole('button', { name: 'حفظ' }))
 
-    expect(await screen.findByText('بريد إلكتروني غير صالح', { selector: 'p' })).toBeInTheDocument()
+    expect(await screen.findByText('بريد إلكتروني غير صالح', { selector: 'p > bdi' })).toBeInTheDocument()
     expect(screen.getAllByText('هذا الحقل مطلوب')).toHaveLength(2)
   })
 

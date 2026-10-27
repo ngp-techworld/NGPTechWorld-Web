@@ -1,5 +1,7 @@
 // Strings of the registry kit (CollectionTab, GroupForm, list editors) and the labels of every registry value list.
 // Read with `const r = useStrings(registryStrings)`. Nested objects are merged shallowly, so each exists in BOTH languages.
+import { ltr } from '@/lib/bidi'
+
 const arCount = (n, one, two, few, many) => (n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? `${n} ${few}` : `${n} ${many}`)
 
 export default {
@@ -30,8 +32,8 @@ export default {
     invalidFormat: 'الصيغة غير صحيحة.',
     keyFormat: 'أحرف إنجليزية صغيرة وأرقام وشرطات (- أو _) فقط، مثل online-ordering.',
     envVarFormat: 'اسم متغير بيئة صالح، مثل DB_HOST.',
-    vaultRefFormat: 'مرجع خزنة يبدأ بـ vault:// مثل vault://ngp/dawri/db-password.',
-    secretDetected: 'يبدو أن هذا الحقل يحتوي على كلمة مرور أو مفتاح أو رمز سري. احفظ السر في الخزنة (Bitwarden) واكتب هنا مرجعه vault:// فقط.',
+    vaultRefFormat: `مرجع خزنة بالصيغة ${ltr('vault://ngp/<slug>/<env>/<item>')}، مثل ${ltr('vault://ngp/dawri/production/db')}.`,
+    secretDetected: `يبدو أن هذا الحقل يحتوي على كلمة مرور أو مفتاح أو رمز سري. احفظ السر في الخزنة (Bitwarden) واكتب هنا مرجعه ${ltr('vault://')} فقط.`,
     secretTooLong: 'النص أطول من أن يُفحص بحثًا عن كلمات المرور والمفاتيح. اختصره.',
     techInUse: 'لا يمكن حذف هذه التقنية: ما زال مشروع واحد على الأقل يستخدمها.',
     industryInUse: 'لا يمكن حذف هذا القطاع: ما زال مشروع واحد على الأقل يستخدمه.',
@@ -223,7 +225,7 @@ export default {
     invalidFormat: 'Invalid format.',
     keyFormat: 'Lowercase letters, numbers and - or _ only, for example online-ordering.',
     envVarFormat: 'A valid environment variable name, for example DB_HOST.',
-    vaultRefFormat: 'A vault reference starting with vault://, for example vault://ngp/dawri/db-password.',
+    vaultRefFormat: 'A vault reference shaped vault://ngp/<slug>/<env>/<item>, for example vault://ngp/dawri/production/db.',
     secretDetected: 'This looks like a password, key or token. Store the secret in the vault (Bitwarden) and record only its vault:// reference here.',
     secretTooLong: 'This text is too long to be checked for passwords and keys. Shorten it.',
     techInUse: 'This technology cannot be deleted: at least one project still uses it.',

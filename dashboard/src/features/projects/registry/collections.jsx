@@ -44,12 +44,16 @@ const TONES = {
 export const enumBadge = (value, labels, tones = {}) => (value ? <Badge tone={tones[value] ?? 'neutral'}>{labels?.[value] ?? value}</Badge> : null)
 const code = (value) => (value ? <bdi dir="ltr" className="break-all font-mono text-[13px] text-soft">{value}</bdi> : null)
 const ltrText = (value) => (value ? <bdi dir="ltr">{value}</bdi> : null)
+// free text of either language in a cell: isolated, so English punctuation stays put in the Arabic table
+const text = (value) => (value ? <bdi>{value}</bdi> : null)
+// the shape of every vault reference (and the kit's VAULT_REF_PATTERN accepts it)
+export const VAULT_PLACEHOLDER = 'vault://ngp/<slug>/<env>/<item>'
 const clip = (value, max = 90) => (value ? <span dir="auto" className="line-clamp-2 max-w-md text-sm text-soft">{String(value).length > max ? `${String(value).slice(0, max)}…` : value}</span> : null)
 const count = (list, r) => (Array.isArray(list) && list.length ? <span className="text-sm text-muted">{r.countItems(list.length)}</span> : null)
 const keyField = (t, r) => ({ name: 'key', type: 'text', label: t.key, required: true, max: 80, pattern: KEY_PATTERN, patternMessage: r.keyFormat, hint: t.keyHint, dir: 'ltr' })
 const evidenceField = (t) => ({ name: 'evidence', type: 'lines', label: t.evidence, hint: t.evidenceHint, maxItems: 30, itemMax: 300, dir: 'ltr' })
 const environmentField = (t, r) => ({ name: 'environment', type: 'select', label: t.environment, options: toOptions(ENVIRONMENTS, r.environments) })
-const vaultField = (t, r) => ({ name: 'vault_ref', type: 'text', label: t.vaultRef, hint: t.vaultRefHint, max: 220, pattern: VAULT_REF_PATTERN, patternMessage: r.vaultRefFormat, dir: 'ltr', placeholder: 'vault://' })
+const vaultField = (t, r) => ({ name: 'vault_ref', type: 'text', label: t.vaultRef, hint: t.vaultRefHint, max: 220, pattern: VAULT_REF_PATTERN, patternMessage: r.vaultRefFormat, dir: 'ltr', placeholder: VAULT_PLACEHOLDER })
 
 // ───────────────────────────────────────────── public: features & tech stack
 
@@ -66,7 +70,7 @@ export const modulesConfig = ({ t, r, pickField }) => ({
     { name: 'description', type: 'bilingual', label: t.description, multiline: true, rows: 3, max: 5000 },
   ],
   columns: () => [
-    { key: 'name', header: t.name, cell: (row) => <span className="font-semibold">{pickField(row, 'name')}</span> },
+    { key: 'name', header: t.name, cell: (row) => <span className="font-semibold">{text(pickField(row, 'name'))}</span> },
     { key: 'key', header: t.key, cell: (row) => code(row.key) },
     { key: 'description', header: t.description, hideBelow: 'md', cell: (row) => clip(pickField(row, 'description')) },
   ],
@@ -118,8 +122,8 @@ export const featuresConfig = ({ t, r, pickField }) => ({
         const module = (ctx?.modules ?? []).find((item) => item.id === row.module_id)
         return (
           <div className="min-w-0">
-            <p className="font-semibold">{pickField(row, 'name')}</p>
-            <p className="text-xs text-muted">{module ? pickField(module, 'name') : code(row.key)}</p>
+            <p className="font-semibold">{text(pickField(row, 'name'))}</p>
+            <p className="text-xs text-muted">{module ? text(pickField(module, 'name')) : code(row.key)}</p>
           </div>
         )
       },
@@ -182,7 +186,7 @@ export const technologiesConfig = ({ t, r }) => ({
     evidenceField(t),
   ],
   columns: () => [
-    { key: 'technology', header: t.technology, cell: (row) => <span className="font-semibold">{row.technology?.name ?? `#${row.technology_id}`}</span> },
+    { key: 'technology', header: t.technology, cell: (row) => <span className="font-semibold">{text(row.technology?.name ?? `#${row.technology_id}`)}</span> },
     { key: 'category', header: t.category, hideBelow: 'sm', cell: (row) => (row.technology ? r.techCategories[row.technology.category] ?? row.technology.category : null) },
     { key: 'version', header: t.version, cell: (row) => ltrText(row.version) },
     { key: 'usage', header: t.usage, cell: (row) => enumBadge(row.usage, r.techUsages, TONES.usage) },
@@ -206,7 +210,7 @@ export const integrationsConfig = ({ t, r }) => ({
     { name: 'notes', type: 'textarea', label: t.notes, max: 5000 },
   ],
   columns: () => [
-    { key: 'name', header: t.name, cell: (row) => <span className="font-semibold">{row.name}</span> },
+    { key: 'name', header: t.name, cell: (row) => <span className="font-semibold">{text(row.name)}</span> },
     { key: 'type', header: t.type, cell: (row) => enumBadge(row.type, r.integrationTypes) },
     { key: 'env_vars', header: t.envVars, hideBelow: 'sm', cell: (row) => (row.env_vars?.length ? code(row.env_vars.join(', ')) : null) },
   ],
@@ -244,7 +248,7 @@ export const maintenanceRecordsConfig = ({ t, r, f }) => ({
     { key: 'status', header: t.status, cell: (row) => enumBadge(row.status, r.recordStatuses, TONES.recordStatus) },
     { key: 'severity', header: t.severity, hideBelow: 'sm', cell: (row) => enumBadge(row.severity, r.severities, TONES.severity) },
     { key: 'occurred_at', header: t.occurredAt, hideBelow: 'md', cell: (row) => (row.occurred_at ? f.date(row.occurred_at) : null) },
-    { key: 'author_name', header: t.author, hideBelow: 'lg', cell: (row) => row.author_name ?? (row.author_id ? t.userN(row.author_id) : null) },
+    { key: 'author_name', header: t.author, hideBelow: 'lg', cell: (row) => text(row.author_name) ?? (row.author_id ? t.userN(row.author_id) : null) },
   ],
 })
 
@@ -333,7 +337,7 @@ export const secretRefsConfig = ({ t, r }) => ({
     { name: 'environment', label: t.environment, options: toOptions(ENVIRONMENTS, r.environments) },
   ],
   fields: [
-    { name: 'ref', type: 'text', label: t.secretRef, required: true, max: 220, pattern: VAULT_REF_PATTERN, patternMessage: r.vaultRefFormat, dir: 'ltr', placeholder: 'vault://', span: 'full' },
+    { name: 'ref', type: 'text', label: t.secretRef, required: true, max: 220, pattern: VAULT_REF_PATTERN, patternMessage: r.vaultRefFormat, dir: 'ltr', placeholder: VAULT_PLACEHOLDER, span: 'full' },
     { name: 'status', type: 'select', label: t.status, nullable: false, options: toOptions(SECRET_STATUSES, r.secretStatuses) },
     { name: 'provider', type: 'text', label: t.provider, max: 40 },
     environmentField(t, r),
@@ -379,7 +383,7 @@ export const environmentsConfig = ({ t, r }) => ({
   columns: () => [
     { key: 'name', header: t.name, cell: (row) => enumBadge(row.name, r.environments) },
     { key: 'description', header: t.description, cell: (row) => clip(row.description) },
-    { key: 'server_label', header: t.serverLabel, hideBelow: 'sm', cell: (row) => row.server_label },
+    { key: 'server_label', header: t.serverLabel, hideBelow: 'sm', cell: (row) => text(row.server_label) },
     { key: 'config_files', header: t.configFiles, hideBelow: 'md', cell: (row) => count(row.config_files, r) },
   ],
 })
@@ -493,13 +497,13 @@ export const serversConfig = ({ t, r }) => ({
       header: t.label,
       cell: (row) => (
         <div className="min-w-0">
-          <p className="font-semibold">{row.label || row.identifier || '—'}</p>
+          <p className="font-semibold">{row.label ? text(row.label) : row.identifier ? ltrText(row.identifier) : '—'}</p>
           {row.label && row.identifier ? <p className="text-xs text-muted">{ltrText(row.identifier)}</p> : null}
         </div>
       ),
     },
     { key: 'environment', header: t.environment, cell: (row) => enumBadge(row.environment, r.environments) },
-    { key: 'hosting_provider', header: t.hostingProvider, hideBelow: 'sm', cell: (row) => row.hosting_provider },
+    { key: 'hosting_provider', header: t.hostingProvider, hideBelow: 'sm', cell: (row) => text(row.hosting_provider) },
     { key: 'public_hostname', header: t.publicHostname, hideBelow: 'md', cell: (row) => code(row.public_hostname) },
     { key: 'ip', header: t.ip, hideBelow: 'lg', cell: (row) => code(row.ip) },
   ],
@@ -665,7 +669,7 @@ export const databasesConfig = ({ t, r }) => ({
     },
     { key: 'logical_name', header: t.logicalName, cell: (row) => code(row.logical_name) },
     { key: 'component', header: t.componentField, hideBelow: 'sm', cell: (row) => code(row.component) },
-    { key: 'orm', header: t.orm, hideBelow: 'md', cell: (row) => row.orm },
+    { key: 'orm', header: t.orm, hideBelow: 'md', cell: (row) => ltrText(row.orm) },
     { key: 'tables', header: t.tables, hideBelow: 'md', cell: (row) => count(row.tables, r) },
   ],
 })
@@ -704,8 +708,8 @@ export const backupsConfig = ({ t, f }) => ({
         return database ? ltrText([database.engine, database.logical_name].filter(Boolean).join(' · ')) : null
       },
     },
-    { key: 'frequency', header: t.frequency, cell: (row) => row.frequency },
-    { key: 'retention', header: t.retention, hideBelow: 'md', cell: (row) => row.retention },
+    { key: 'frequency', header: t.frequency, cell: (row) => text(row.frequency) },
+    { key: 'retention', header: t.retention, hideBelow: 'md', cell: (row) => text(row.retention) },
     { key: 'last_tested_at', header: t.lastTestedAt, hideBelow: 'lg', cell: (row) => (row.last_tested_at ? f.date(row.last_tested_at) : null) },
   ],
 })

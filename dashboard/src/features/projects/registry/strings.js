@@ -1,5 +1,7 @@
 // Strings of the registry tabs of the project page (field labels of every collection and operations group).
 // Value lists (statuses, kinds…) come from the registry kit strings (`registryStrings`).
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     // tab bar
@@ -304,7 +306,7 @@ export default {
     environment: 'البيئة',
     owner: 'المالك',
     vaultRef: 'مرجع الخزنة',
-    vaultRefHint: 'مثل vault://ngp/dawri/admin-login — لا تكتب كلمة المرور نفسها.',
+    vaultRefHint: `بالصيغة ${ltr('vault://ngp/<slug>/<env>/<item>')}، مثل ${ltr('vault://ngp/dawri/production/db')} — لا تكتب كلمة المرور نفسها.`,
     mfaStatus: 'التحقق الثنائي',
     lastVerifiedAt: 'آخر تحقق',
     secretsTitle: 'الأسرار المطلوبة في Bitwarden',
@@ -737,7 +739,7 @@ export default {
     environment: 'Environment',
     owner: 'Owner',
     vaultRef: 'Vault reference',
-    vaultRefHint: 'For example vault://ngp/dawri/admin-login — never the password itself.',
+    vaultRefHint: 'Shaped vault://ngp/<slug>/<env>/<item>, for example vault://ngp/dawri/production/db — never the password itself.',
     mfaStatus: 'MFA',
     lastVerifiedAt: 'Last verified',
     secretsTitle: 'Secrets to create in Bitwarden',

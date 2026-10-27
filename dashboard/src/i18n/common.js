@@ -1,5 +1,7 @@
 // Shared strings used by the kit and by every feature (`useCommon()`).
 // Values may be functions for parameterised text. Keys must exist in BOTH languages.
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     appName: 'NGP TechWorld',
@@ -78,7 +80,7 @@ export default {
     maxLength: (n) => `الحد الأقصى ${n} حرفًا`,
     minLength: (n) => `الحد الأدنى ${n} أحرف`,
     invalidEmail: 'بريد إلكتروني غير صالح',
-    invalidUrl: 'رابط غير صالح (يجب أن يبدأ بـ http:// أو https://)',
+    invalidUrl: `رابط غير صالح (يجب أن يبدأ بـ ${ltr('http://')} أو ${ltr('https://')})`,
     launchNeedsDate: 'حدّد موعد الافتتاح حتى يعمل العدّ التنازلي.',
     invalidMonth: 'اختر شهرًا صالحًا',
     invalidNumber: 'أدخل رقمًا صالحًا',

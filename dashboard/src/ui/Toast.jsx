@@ -71,7 +71,10 @@ export function ToastProvider({ children }) {
               className={cx('pointer-events-none flex items-start gap-3 rounded-xl border bg-surface px-4 py-3 shadow-pop animate-toast-in', cls)}
             >
               <Icon size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
-              <p className="min-w-0 flex-1 text-sm text-ink">{toast.message}</p>
+              {/* isolated: an English server message keeps its punctuation in the Arabic UI */}
+              <p className="min-w-0 flex-1 text-sm text-ink">
+                <bdi>{toast.message}</bdi>
+              </p>
               <button
                 type="button"
                 onClick={() => dismiss(toast.id)}

@@ -1,5 +1,7 @@
 // Strings of the project imports wizard (upload → preview → report, the history and the Export button).
 // Read with `const t = useStrings(strings)`. The merge is shallow: every nested object exists in BOTH languages.
+import { ltr } from '@/lib/bidi'
+
 const arCount = (n, one, two, few, many) => (n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? `${n} ${few}` : `${n} ${many}`)
 const enCount = (n, one, many) => `${n} ${n === 1 ? one : many}`
 const arFiles = (n) => arCount(n, 'ملف واحد', 'ملفان', 'ملفات', 'ملفًا')
@@ -25,15 +27,17 @@ export default {
 
     // upload
     uploadTitle: 'رفع حزمة مشروع',
-    uploadDescription: 'مجلد الحزمة أو ملف مضغوط منه (‎.zip). المجلد يُضغط في المتصفح قبل رفعه.',
+    uploadDescription: `مجلد الحزمة أو ملف مضغوط منه (${ltr('.zip')}). المجلد يُضغط في المتصفح قبل رفعه.`,
     dropTitle: 'اسحب مجلد الحزمة أو ملفها المضغوط إلى هنا',
     dropActive: 'أفلت هنا لبدء الاستيراد',
     dropOr: 'أو',
     chooseFolder: 'اختر مجلداً',
     chooseZip: 'اختر ملفاً مضغوطاً',
-    acceptedTypes: 'يُضمَّن من المجلد: ‎.json و‎.md و‎.png و‎.jpg و‎.jpeg و‎.webp فقط. الحد: 300 ملف و200 ميغابايت، و50 ميغابايت للملف المضغوط.',
+    acceptedTypes: `يُضمَّن من المجلد: ${['.json', '.md', '.png', '.jpg', '.jpeg', '.webp'].map(ltr).join(' و')} فقط. الحد: 300 ملف و200 ميغابايت، و50 ميغابايت للملف المضغوط.`,
     howTitle: 'كيف تجهّز مشروعًا للاستيراد؟',
-    howSteps: ['شغّل برومبت الاكتشاف على المشروع.', 'اسحب المجلد الذي أنتجه (ngp-portfolio/، أو نسختك في intake/<slug>/) إلى هنا.'],
+    howPaths: ['ngp-portfolio/', 'intake/<slug>/'],
+    // `{0}`, `{1}`: the folders of howPaths, shown left to right (withLtr)
+    howSteps: ['شغّل برومبت الاكتشاف على المشروع.', 'اسحب المجلد الذي أنتجه ({0}، أو نسختك في {1}) إلى هنا.'],
     reading: 'جارٍ قراءة المجلد…',
     zipping: 'جارٍ ضغط المجلد…',
     uploading: 'جارٍ الرفع…',
@@ -50,11 +54,11 @@ export default {
     // client checks (before anything is sent)
     inputErrors: {
       too_many_files: (count, max) => `المجلد يحتوي ${arFiles(count)} من الأنواع المقبولة، والحد الأقصى ${max} ملف.`,
-      too_many_scanned: (max) => `المجلد يحتوي أكثر من ${max} ملف. اسحب مجلد الحزمة (ngp-portfolio/) وحده، لا مجلد المشروع كله.`,
+      too_many_scanned: (max) => `المجلد يحتوي أكثر من ${max} ملف. اسحب مجلد الحزمة (${ltr('ngp-portfolio/')}) وحده، لا مجلد المشروع كله.`,
       too_large: (size, max) => `حجم ملفات المجلد ${size}، والحد الأقصى ${max}.`,
       zip_too_large: (size, max) => `الملف المضغوط (${size}) أكبر من الحد المسموح برفعه (${max}).`,
       empty: 'لا توجد في المجلد ملفات من الأنواع المقبولة (json وmd وpng وjpg وjpeg وwebp).',
-      not_zip: 'اختر ملفاً مضغوطاً بامتداد ‎.zip، أو مجلداً.',
+      not_zip: `اختر ملفاً مضغوطاً بامتداد ${ltr('.zip')}، أو مجلداً.`,
       one_item: 'اسحب ملفاً مضغوطاً واحداً أو مجلداً واحداً.',
       read_failed: 'تعذّرت قراءة الملفات. حاول مرة أخرى، أو اختر المجلد بزر «اختر مجلداً».',
       zip_failed: 'تعذّر ضغط المجلد في المتصفح. حاول مرة أخرى، أو ارفع ملفاً مضغوطاً جاهزاً.',
@@ -200,7 +204,7 @@ export default {
     onlyInDbHint: 'موجودة عندك وليست في الحزمة — لن تُحذف',
     sectionErrors: (n) => `أخطاء (${n})`,
     errorCodes: {
-      no_secrets: 'يبدو أن هذه القيمة تحتوي على كلمة مرور أو مفتاح أو رمز سري. ضع السر في الخزنة واكتب في الحزمة مرجعه vault:// فقط.',
+      no_secrets: `يبدو أن هذه القيمة تحتوي على كلمة مرور أو مفتاح أو رمز سري. ضع السر في الخزنة واكتب في الحزمة مرجعه ${ltr('vault://')} فقط.`,
     },
 
     // preview: actions
@@ -301,7 +305,8 @@ export default {
     chooseZip: 'Choose a ZIP file',
     acceptedTypes: 'Only .json, .md, .png, .jpg, .jpeg and .webp files are taken from a folder. Limits: 300 files and 200 MB, and 50 MB for the ZIP.',
     howTitle: 'How to prepare a project',
-    howSteps: ['Run the discovery prompt on the project.', 'Drag the folder it produced (ngp-portfolio/, or your copy in intake/<slug>/) here.'],
+    howPaths: ['ngp-portfolio/', 'intake/<slug>/'],
+    howSteps: ['Run the discovery prompt on the project.', 'Drag the folder it produced ({0}, or your copy in {1}) here.'],
     reading: 'Reading the folder…',
     zipping: 'Zipping the folder…',
     uploading: 'Uploading…',
