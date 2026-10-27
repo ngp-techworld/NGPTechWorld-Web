@@ -47,7 +47,7 @@ describe('registry feature', () => {
   it('registers the overview, the list and the shared project page', () => {
     expect(registry.id).toBe('registry')
     expect(registry.nav).toMatchObject({ group: 'main', to: '/registry' })
-    expect(registry.routes.map((route) => route.path)).toEqual(['registry', 'registry/projects', 'projects/new', 'projects/:id'])
+    expect(registry.routes.map((route) => route.path)).toEqual(['registry', 'registry/projects', 'projects/new', 'projects/:id', 'projects/:id/profile'])
   })
 
   it('lets a registry-only account open a project page (no projects section needed)', async () => {

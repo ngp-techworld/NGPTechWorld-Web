@@ -1,0 +1,95 @@
+/*
+ * The project profile on paper ("Print / save as PDF"). Active only while the profile is open (ProjectProfile sets
+ * the class on <html>). The app chrome, the table of contents and every control are left out, the dark theme turns
+ * into ink on white (browsers do not print backgrounds by default), cards try not to split across pages, and what is
+ * folded or filtered on screen stays folded or filtered on paper.
+ */
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  html.ngp-profile-print {
+    color-scheme: light;
+  }
+
+  html.ngp-profile-print body,
+  html.ngp-profile-print .bg-page {
+    background: #fff !important;
+  }
+
+  html.ngp-profile-print #app-sidebar,
+  html.ngp-profile-print header.sticky,
+  html.ngp-profile-print a[href='#main-content'],
+  html.ngp-profile-print [data-print-hide] {
+    display: none !important;
+  }
+
+  html.ngp-profile-print #main-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  html.ngp-profile-print [data-profile-layout] {
+    display: block !important;
+  }
+
+  html.ngp-profile-print [data-profile-root] * {
+    color: #1d1528 !important;
+    background: transparent !important;
+    border-color: #d9d1e4 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  html.ngp-profile-print [data-profile-root] .text-muted,
+  html.ngp-profile-print [data-profile-root] .text-faint,
+  html.ngp-profile-print [data-profile-root] .text-soft {
+    color: #4f445e !important;
+  }
+
+  html.ngp-profile-print [data-profile-root] mark {
+    background: #fbe7b5 !important;
+  }
+
+  /* the tier edge keeps its colour: it says who may read the card */
+  html.ngp-profile-print [data-tier='public'] {
+    border-inline-start-color: #3d7fd1 !important;
+  }
+  html.ngp-profile-print [data-tier='internal'] {
+    border-inline-start-color: #7a5aa6 !important;
+  }
+  html.ngp-profile-print [data-tier='sensitive'] {
+    border-inline-start-color: #c2414c !important;
+  }
+
+  html.ngp-profile-print [data-profile-card],
+  html.ngp-profile-print [data-profile-block],
+  html.ngp-profile-print [data-profile-root] li,
+  html.ngp-profile-print [data-profile-root] tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  html.ngp-profile-print [data-profile-card] {
+    margin-bottom: 6mm;
+  }
+
+  html.ngp-profile-print [data-profile-root] h2,
+  html.ngp-profile-print [data-profile-root] h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* scrolling boxes (the env var table) print whole; sticky parts print in place */
+  html.ngp-profile-print [data-profile-root] .overflow-auto,
+  html.ngp-profile-print [data-profile-root] .overflow-x-auto,
+  html.ngp-profile-print [data-profile-root] .overflow-hidden {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  html.ngp-profile-print [data-profile-root] .sticky {
+    position: static !important;
+  }
+}

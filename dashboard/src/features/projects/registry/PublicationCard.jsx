@@ -17,7 +17,7 @@ function MissingList({ keys, labels }) {
   )
 }
 
-function Completeness({ completeness }) {
+export function Completeness({ completeness }) {
   const { t, r } = useRegistryEnv()
   const score = completeness?.score ?? 0
   return (

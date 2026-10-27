@@ -6,6 +6,8 @@ import ProjectEdit from '@/features/projects/ProjectEdit'
 // loaded on first visit (the layout wraps every routed page in <Suspense>)
 const RegistryOverview = lazy(() => import('./RegistryOverview'))
 const RegistryProjectList = lazy(() => import('./RegistryProjectList'))
+// the read-only dossier of one project (ملف المشروع), for whoever may view the project
+const ProjectProfile = lazy(() => import('./profile/ProjectProfile'))
 
 // The project registry (spec §8): visible to super admins and every registry role (app/permissions.js). The
 // project page itself belongs to the `projects` feature too; it is listed here so a registry-only account (no
@@ -18,5 +20,6 @@ export default {
     { path: 'registry/projects', element: <RegistryProjectList /> },
     { path: 'projects/new', element: <ProjectCreate /> },
     { path: 'projects/:id', element: <ProjectEdit /> },
+    { path: 'projects/:id/profile', element: <ProjectProfile /> },
   ],
 }

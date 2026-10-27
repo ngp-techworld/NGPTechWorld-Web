@@ -14,7 +14,7 @@ import strings from './strings'
 // API's default), '1' (archived only) or 'all' (both, API contract B8).
 const DEFAULTS = { per_page: 25 }
 
-const DEV_TONES = { idea: 'neutral', planning: 'info', in_development: 'warning', testing: 'warning', completed: 'success', maintenance: 'info', paused: 'neutral', archived: 'neutral' }
+export const DEV_TONES = { idea: 'neutral', planning: 'info', in_development: 'warning', testing: 'warning', completed: 'success', maintenance: 'info', paused: 'neutral', archived: 'neutral' }
 
 function CompletenessBar({ completeness, label }) {
   const score = completeness?.score ?? 0
