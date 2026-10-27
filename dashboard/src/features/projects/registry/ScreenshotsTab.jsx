@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Image as ImageIcon, Pencil, Star, Trash2, Upload } from 'lucide-react'
+import { Image as ImageIcon, ListOrdered, Lock, Pencil, Star, Trash2, Upload } from 'lucide-react'
 import {
   AuthImage,
+  apiPathOf,
   CONTENT_LANGUAGES,
   KEY_PATTERN,
   RecordDialog,
@@ -22,9 +23,14 @@ import { Alert, Badge, Button, EmptyState, IconButton, Pagination, SortableList,
 import { useRegistryEnv } from './useRegistryEnv'
 
 const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
-// Reordering sends every id (the API sets `order` = position): only offered while the whole list fits one page.
 // 48 a page: each private thumbnail is one request to the file stream, which allows 60 a minute.
 const PER_PAGE = 48
+// Reordering sends every id (the API sets `order` = position of each id it gets), so it needs the whole list in one
+// request: up to the list's page-size cap (AdminCrudController: per_page <= 200). While everything fits one page the
+// tiles are dragged in place; past that, a reorder mode loads them all as small tiles (private ones without a preview,
+// to stay under the stream's limit).
+export const REORDER_LIMIT = 200
+const GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3' // grid-cols-1 = minmax(0, 1fr): long titles truncate
 
 /** The fields of a screenshot (ScreenshotController::rules). Visibility is set at upload, then by the switch. */
 function screenshotFields({ t, r, c }, { upload }) {
@@ -42,8 +48,9 @@ function screenshotFields({ t, r, c }, { upload }) {
 /**
  * A project's screenshots: multipart upload (public or private), thumbnails (a private one is streamed with the
  * bearer token), the public / private switch (the API moves the file between disks), "make it the cover" for a
- * public screenshot, titles, drag to reorder and delete. Rows mirrored from the original gallery belong to the
- * Media tab: they can be described here, not hidden or deleted.
+ * public screenshot, titles, drag to reorder (in place while one page holds them all, else in a reorder mode that
+ * loads up to 200) and delete. Rows mirrored from the original gallery belong to the Media tab: they can be described
+ * here, not hidden or deleted.
  */
 export function ScreenshotsTab({ registry }) {
   const env = useRegistryEnv()
@@ -53,7 +60,8 @@ export function ScreenshotsTab({ registry }) {
   const refresh = useRefreshRegistry(registry.id)
   const hooks = useCrudHooks(`${registryPath(registry.id)}/screenshots`)
   const [page, setPage] = useState(1)
-  const list = hooks.useList({ per_page: PER_PAGE, page, sort: 'order', dir: 'asc' })
+  const [reordering, setReordering] = useState(false)
+  const list = hooks.useList(reordering ? { per_page: REORDER_LIMIT, page: 1, sort: 'order', dir: 'asc' } : { per_page: PER_PAGE, page, sort: 'order', dir: 'asc' })
   const failed = (err) => toast.error(actionErrorText(err, r, c))
   const create = hooks.useCreate({ onSuccess: refresh })
   const update = hooks.useUpdate({ onSuccess: refresh })
@@ -75,7 +83,12 @@ export function ScreenshotsTab({ registry }) {
   })
   const reorder = hooks.useReorder()
   const canWrite = registry.abilities.updatePublic
-  const canReorder = canWrite && (list.meta?.last_page ?? 1) <= 1
+  const total = list.meta?.total ?? list.rows.length
+  // drag in place while one page holds them all; otherwise through the reorder mode, which loads them all
+  const canReorder = canWrite && !reordering && (list.meta?.last_page ?? 1) <= 1
+  const needsReorderMode = canWrite && !reordering && (list.meta?.last_page ?? 1) > 1
+  // the whole list has arrived (not the previous page, kept on screen while the big one loads)
+  const allLoaded = reordering && !list.isPlaceholderData && list.isSuccess && list.rows.length === total
   const [dialog, setDialog] = useState({ open: false, record: null })
 
   const uploadConfig = useMemo(
@@ -118,7 +131,7 @@ export function ScreenshotsTab({ registry }) {
     const isPublic = pendingOf(row).is_public ?? row.is_public
     const isCover = pendingOf(row).is_cover ?? row.is_cover
     return (
-      <article aria-label={name} className="overflow-hidden rounded-card border border-white/[.08] bg-white/[.03]">
+      <article aria-label={name} className="min-w-0 overflow-hidden rounded-card border border-white/[.08] bg-white/[.03]">
         <div className="relative aspect-video bg-white/[.04]">
           <AuthImage src={row.thumbnail_url ?? row.url} alt={name} />
           <div className="absolute start-2 top-2 flex flex-wrap gap-1">
@@ -156,6 +169,30 @@ export function ScreenshotsTab({ registry }) {
     )
   }
 
+  // a small tile of the reorder mode: public previews only (a private one would cost a stream request each)
+  const reorderTile = (row, handle, index) => {
+    const name = nameOf(row)
+    const src = row.thumbnail_url ?? row.url
+    return (
+      <div className="min-w-0 overflow-hidden rounded-xl border border-white/[.08] bg-white/[.03]">
+        <div className="relative aspect-video bg-white/[.04]">
+          {src && !apiPathOf(src) ? (
+            <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-faint" title={t.privateScreenshot}>
+              <Lock size={18} aria-hidden="true" />
+            </span>
+          )}
+          <span className="absolute start-1.5 top-1.5 rounded-md bg-deep/75 px-1.5 text-[11px] font-bold tabular-nums text-ink">{index + 1}</span>
+          <div className="absolute end-1 top-1 rounded-lg bg-deep/70">{handle}</div>
+        </div>
+        <p dir="auto" className="truncate px-2 py-1.5 text-xs font-semibold text-ink" title={name}>
+          {name}
+        </p>
+      </div>
+    )
+  }
+
   let body
   if (list.isError && rows.length === 0) {
     body = (
@@ -169,6 +206,25 @@ export function ScreenshotsTab({ registry }) {
         <Spinner size={24} label={c.loading} />
       </div>
     )
+  } else if (reordering) {
+    body = allLoaded ? (
+      <div className="space-y-3">
+        <p className="text-sm text-muted">{t.reorderModeHint(total)}</p>
+        <SortableList
+          items={rows}
+          layout="grid"
+          ariaLabel={t.reorderScreenshots}
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6"
+          itemClassName="min-w-0"
+          onReorder={(next) => reorder.mutate(next.map((row) => row.id))}
+          renderItem={(row, { handle, isDragging, index }) => <div className={cx(isDragging && 'opacity-80')}>{reorderTile(row, handle, index)}</div>}
+        />
+      </div>
+    ) : (
+      <div className="flex justify-center py-10 text-accent-lighter">
+        <Spinner size={24} label={c.loading} />
+      </div>
+    )
   } else if (rows.length === 0) {
     body = <EmptyState icon={ImageIcon} title={t.noScreenshots} description={canWrite ? t.noScreenshotsHint : undefined} />
   } else if (canReorder) {
@@ -177,16 +233,19 @@ export function ScreenshotsTab({ registry }) {
         items={rows}
         layout="grid"
         ariaLabel={t.reorderScreenshots}
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className={GRID}
+        itemClassName="min-w-0"
         onReorder={(next) => reorder.mutate(next.map((row) => row.id))}
-        renderItem={(row, { handle, isDragging }) => <div className={cx(isDragging && 'opacity-80')}>{tile(row, handle)}</div>}
+        renderItem={(row, { handle, isDragging }) => <div className={cx('min-w-0', isDragging && 'opacity-80')}>{tile(row, handle)}</div>}
       />
     )
   } else {
     body = (
-      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className={GRID}>
         {rows.map((row) => (
-          <li key={row.id}>{tile(row, null)}</li>
+          <li key={row.id} className="min-w-0">
+            {tile(row, null)}
+          </li>
         ))}
       </ul>
     )
@@ -199,14 +258,33 @@ export function ScreenshotsTab({ registry }) {
           <h2 className="text-base font-bold text-ink">{t.screenshotsTitle}</h2>
           <p className="mt-0.5 max-w-3xl text-sm text-muted">{t.screenshotsDescription}</p>
         </div>
-        {canWrite ? (
-          <Button size="sm" icon={Upload} onClick={() => setDialog({ open: true, record: null })}>
-            {t.uploadScreenshot}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {reordering ? (
+            <Button size="sm" onClick={() => setReordering(false)}>
+              {c.reorderDone}
+            </Button>
+          ) : needsReorderMode ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={ListOrdered}
+              onClick={() => setReordering(true)}
+              disabled={total > REORDER_LIMIT}
+              title={total > REORDER_LIMIT ? c.reorderTooMany(REORDER_LIMIT) : undefined}
+            >
+              {c.reorder}
+            </Button>
+          ) : null}
+          {canWrite && !reordering ? (
+            <Button size="sm" icon={Upload} onClick={() => setDialog({ open: true, record: null })}>
+              {t.uploadScreenshot}
+            </Button>
+          ) : null}
+        </div>
       </div>
+      {needsReorderMode && total > REORDER_LIMIT ? <p className="text-xs text-muted">{c.reorderTooMany(REORDER_LIMIT)}</p> : null}
       {body}
-      {list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
+      {!reordering && list.meta && list.meta.last_page > 1 ? <Pagination meta={list.meta} onPageChange={setPage} /> : null}
       <RecordDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false, record: null })}

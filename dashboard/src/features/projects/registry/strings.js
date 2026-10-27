@@ -221,7 +221,11 @@ export default {
     deleteScreenshot: (name) => `حذف: ${name}`,
     untitled: 'بلا عنوان',
     reorderScreenshots: 'ترتيب لقطات الشاشة',
+    reorderModeHint: (n) => `كل لقطات الشاشة (${n}) بترتيبها في صفحة المشروع. اسحب لقطة إلى مكانها، أو استخدم لوحة المفاتيح: المسافة للالتقاط ثم الأسهم. يُحفظ الترتيب فورًا. تظهر الخاصة بلا معاينة هنا.`,
     coverSaved: 'تم تعيين الغلاف',
+    mediaScreenshotsTitle: 'صور الصفحة العامة تُدار في تبويب «لقطات الشاشة»',
+    mediaScreenshotsNote: 'لهذا المشروع لقطات شاشة، ومنها تأخذ صفحته العامة صورها (كما في المشاريع المستوردة)، لذلك قد يبدو الغلاف والمعرض هنا فارغين. إن بقي الغلاف هنا فارغًا عُرضت لقطة الشاشة المعلَّمة «الغلاف». لا حاجة إلى رفع الصور هنا مرة أخرى.',
+    openScreenshots: 'فتح لقطات الشاشة',
 
     // non-functional
     nonfunctionalTitle: 'المتطلبات غير الوظيفية',
@@ -654,7 +658,11 @@ export default {
     deleteScreenshot: (name) => `Delete: ${name}`,
     untitled: 'Untitled',
     reorderScreenshots: 'Screenshot order',
+    reorderModeHint: (n) => `All ${n} screenshots, in their order on the project page. Drag one to its place, or use the keyboard: Space to pick it up, then the arrows. The order is saved at once. Private ones show without a preview here.`,
     coverSaved: 'Cover set',
+    mediaScreenshotsTitle: 'The public page’s images are managed in the Screenshots tab',
+    mediaScreenshotsNote: 'This project has screenshots, and its public page takes its images from them (as imported projects do), so the cover and gallery here can look empty. While the cover here is empty, the screenshot marked as the cover is shown. There is no need to upload the images here again.',
+    openScreenshots: 'Open Screenshots',
 
     nonfunctionalTitle: 'Non-functional attributes',
     nonfunctionalDescription: 'One card per attribute: what is implemented, what was verified, the assumptions and the recommendations.',

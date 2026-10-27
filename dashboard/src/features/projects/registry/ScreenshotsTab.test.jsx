@@ -193,6 +193,62 @@ describe('Screenshots tab', () => {
     expect(api.calls('POST', '/registry/projects/7/screenshots/reorder')[0].body).toEqual({ ids: [2, 3, 1] })
   })
 
+  // a page of the list, honouring per_page and page like the API (which caps per_page at 200)
+  const pages = (all) => ({ query }) => {
+    const perPage = Math.min(Number(query.per_page ?? 15), 200)
+    const page = Number(query.page ?? 1)
+    return paginated(all.slice((page - 1) * perPage, page * perPage), { page, perPage, total: all.length })
+  }
+
+  it('reorders more shots than a page holds (Dawri: 51) in a reorder mode that loads them all', async () => {
+    setToken('t0ken')
+    const all = Array.from({ length: 51 }, (_, index) => (index % 10 === 9 ? shot(index + 1, { ...privateShot, id: index + 1, title_en: `Screen ${index + 1}`, url: `http://localhost/api/admin/registry/files/screenshots/${index + 1}`, thumbnail_url: `http://localhost/api/admin/registry/files/screenshots/${index + 1}?w=480` }) : shot(index + 1)))
+    const { api, user } = renderTab({ extra: { 'GET /registry/projects/:id/screenshots': pages(all), 'POST /registry/projects/:id/screenshots/reorder': () => null } })
+
+    await tile('Screen 1')
+    expect(screen.getAllByRole('article')).toHaveLength(48) // the first page, no drag in place
+    expect(screen.queryByRole('list', { name: 'Screenshot order' })).not.toBeInTheDocument()
+    const streamed = api.calls('GET').filter((call) => call.path.startsWith('/registry/files/')).length
+
+    await user.click(screen.getByRole('button', { name: 'Reorder' }))
+    const order = await screen.findByRole('list', { name: 'Screenshot order' })
+    expect(within(order).getAllByRole('listitem')).toHaveLength(51)
+    expect(api.calls('GET', '/registry/projects/7/screenshots').at(-1).query).toMatchObject({ per_page: '200', page: '1' })
+    expect(screen.getByText(/^All 51 screenshots, in their order on the project page/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Upload a screenshot' })).not.toBeInTheDocument()
+    // private shots show without a preview: no extra request to the rate-limited file stream
+    expect(api.calls('GET').filter((call) => call.path.startsWith('/registry/files/')).length).toBe(streamed)
+
+    dropOn(order, 51, 1)
+    await waitFor(() => expect(api.calls('POST', '/registry/projects/7/screenshots/reorder')).toHaveLength(1))
+    const { ids } = api.calls('POST', '/registry/projects/7/screenshots/reorder')[0].body
+    expect(ids).toHaveLength(51)
+    expect(ids.slice(0, 3)).toEqual([51, 1, 2])
+
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    expect(await screen.findAllByRole('article')).toHaveLength(48)
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
+  })
+
+  it('cannot reorder more shots than one request returns (200), and says so', async () => {
+    const all = Array.from({ length: 201 }, (_, index) => shot(index + 1))
+    renderTab({ extra: { 'GET /registry/projects/:id/screenshots': pages(all) } })
+    await tile('Screen 1')
+
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled()
+    expect(screen.getByText('More than 200 items — reordering is not available here.')).toBeInTheDocument()
+  })
+
+  it('keeps long titles inside a one-column grid on a phone (minmax(0, 1fr), truncated)', async () => {
+    renderTab({ rows: [shot(1, { title_en: 'A screenshot with a very long title that would widen the single grid column on a phone' })] })
+    const article = await screen.findByRole('article', { name: /very long title/ })
+    const grid = screen.getByRole('list', { name: 'Screenshot order' })
+    expect(grid).toHaveClass('grid-cols-1')
+    expect(grid.querySelector('li')).toHaveClass('min-w-0')
+    expect(article).toHaveClass('min-w-0')
+    expect(within(article).getByText(/very long title/)).toHaveClass('truncate')
+  })
+
   it('is read-only for a viewer', async () => {
     renderTab({ abilities: ABILITIES.viewer })
     const first = await tile('Screen 1')
