@@ -11,7 +11,8 @@ const KNOWN = [
   [/comes from the project gallery/i, 'legacyGallery'],
   [/already listed for that component/i, 'duplicateForComponent'],
   [/already in the catalog/i, 'alreadyInCatalog'],
-  [/private screenshot cannot be the cover|cannot be the cover/i, 'privateCover'],
+  [/public screenshot can be the cover|cannot be the cover/i, 'privateCover'],
+  [/archived project cannot be featured/i, 'archivedNoFeature'],
 ]
 
 /** One server message in the UI language when it is one the registry is known to send; otherwise unchanged. */

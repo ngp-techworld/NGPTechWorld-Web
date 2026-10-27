@@ -31,6 +31,8 @@ describe('server errors', () => {
   it('explains the "last public image" refusal and catalog guards in words', () => {
     expect(actionErrorText(unprocessable({ publication: ['cover'] }), r, c)).toBe(r.lastPublicImage)
     expect(actionErrorText(unprocessable({ industry: ['A project still uses this industry.'] }), r, c)).toBe(r.industryInUse)
+    expect(actionErrorText(unprocessable({ is_cover: ['Only a public screenshot can be the cover.'] }), r, c)).toBe(r.privateCover)
+    expect(actionErrorText(unprocessable({ featured: ['An archived project cannot be featured.'] }), r, c)).toBe(r.archivedNoFeature)
     expect(actionErrorText(new ApiError({ status: 403 }), r, c)).toBe(c.forbidden)
   })
 })
