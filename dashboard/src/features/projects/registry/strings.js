@@ -128,6 +128,7 @@ export default {
     membersAddUnavailable: 'تعذّر تحميل قائمة الحسابات، فلا يمكن إضافة عضو الآن.',
     noEligibleAccounts: 'لا توجد حسابات أخرى لها دور في سجل المشاريع. أعطِ الحساب دورًا من صفحة المستخدمين أولًا.',
     removeMemberTitle: 'إزالة العضو',
+    removeYourselfMessage: 'هل تريد إزالة نفسك من أعضاء المشروع؟ ستفقد فورًا وصولك إلى أقسامه الحساسة وإدارة أعضائه، ولن تستطيع إعادة نفسك.',
     removeMemberMessage: (name) => `هل تريد إزالة «${name}» من أعضاء المشروع؟ سيفقد وصوله إلى أقسامه الحساسة.`,
 
     // features
@@ -555,6 +556,7 @@ export default {
     membersAddUnavailable: 'The list of accounts could not be loaded, so no member can be added right now.',
     noEligibleAccounts: 'No other account has a project registry role. Give the account a role on the Users page first.',
     removeMemberTitle: 'Remove member',
+    removeYourselfMessage: 'Remove yourself from the project members? You lose its sensitive tabs and the management of its members at once, and cannot add yourself back.',
     removeMemberMessage: (name) => `Remove “${name}” from the project members? They lose access to its sensitive tabs.`,
 
     modulesTitle: 'Modules',

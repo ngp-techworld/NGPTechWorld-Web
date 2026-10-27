@@ -86,7 +86,7 @@ export const legacyProject = (over = {}) =>
   showProject(7, { slug: 'acme-portal', name_ar: 'بوابة أكمي', name_en: 'Acme Portal', client: 'Acme', ...registryColumns, ...over })
 
 /** GET /registry/projects/{id}: the project, the operations groups the abilities allow, completeness, abilities. */
-export function registryRecord({ abilities = ABILITIES.superAdmin, over = {}, publication } = {}) {
+export function registryRecord({ abilities = ABILITIES.superAdmin, over = {}, publication = { ready: true, missing: [] } } = {}) {
   const operations = Object.fromEntries(
     Object.entries(emptyOperations).filter(([group]) => (INTERNAL.includes(group) ? abilities.viewInternal : SENSITIVE.includes(group) ? abilities.viewSensitive : false)),
   )
@@ -101,7 +101,8 @@ export function registryRecord({ abilities = ABILITIES.superAdmin, over = {}, pu
       score: 86,
     },
     abilities,
-    ...(publication ? { publication } : {}),
+    publication,
+    mfa_enrollment_required: false,
     ...over,
   }
 }

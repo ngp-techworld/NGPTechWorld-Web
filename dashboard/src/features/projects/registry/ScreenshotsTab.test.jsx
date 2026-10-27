@@ -65,6 +65,7 @@ describe('Screenshots tab', () => {
     expect((await tile('Screen 1')).getByRole('img', { name: 'Screen 1' })).toHaveAttribute('src', 'http://localhost/media/projects/screenshots/1-480.webp')
     const privateTile = await tile('Screen 2')
     expect(await privateTile.findByRole('img', { name: 'Screen 2' })).toHaveAttribute('src', expect.stringMatching(/^blob:/))
+    expect(api.calls('GET', '/registry/projects/7/screenshots')[0].query).toMatchObject({ per_page: '48' }) // under the stream's 60/min
     const stream = api.calls('GET', '/registry/files/screenshots/2')
     expect(stream).toHaveLength(1)
     expect(stream[0].query).toEqual({ w: '480' })

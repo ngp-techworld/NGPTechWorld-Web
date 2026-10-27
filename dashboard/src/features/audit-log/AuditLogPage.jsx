@@ -14,7 +14,7 @@ const users = createCrudHooks('/users')
 
 // The API pages newest first (no sort parameter); 50 a page by default, at most 200.
 const DEFAULTS = { per_page: 50 }
-const ACTION_TONES = { created: 'success', updated: 'info', deleted: 'danger', published: 'success', unpublished: 'warning', featured: 'gold', unfeatured: 'neutral', archived: 'warning', restored: 'info', member_added: 'accent', member_removed: 'warning', viewed_sensitive: 'gold' }
+const ACTION_TONES = { created: 'success', updated: 'info', deleted: 'danger', published: 'success', unpublished: 'warning', featured: 'gold', unfeatured: 'neutral', archived: 'warning', restored: 'info', reordered: 'neutral', imported: 'accent', exported: 'info', member_added: 'accent', member_removed: 'warning', viewed_sensitive: 'gold' }
 
 const show = (value) => {
   if (value === null || value === undefined) return <span className="text-faint">—</span>
@@ -61,6 +61,11 @@ function DetailsDialog({ entry, onClose }) {
           ) : (
             <p className="text-sm text-muted">{t.noChanges}</p>
           )}
+          {entry.batch_id ? (
+            <p className="text-xs text-muted">
+              {t.batch}: <bdi dir="ltr">{entry.batch_id}</bdi>
+            </p>
+          ) : null}
           {entry.user_agent ? (
             <p className="text-xs text-muted">
               {t.userAgent}: <bdi dir="ltr">{entry.user_agent}</bdi>
@@ -80,7 +85,8 @@ export default function AuditLogPage() {
   const { pickField } = useLanguage()
   const list = useListParams(DEFAULTS)
   const { rows, meta, isLoading, isFetching, isError, error, refetch } = auditLogs.useList(list.params)
-  const projectOptions = registryProjects.useList({ per_page: 100 }).rows.map((project) => ({ value: String(project.id), label: pickField(project, 'name') }))
+  // archived ones too: their events stay in the trail (B8 `archived=all`)
+  const projectOptions = registryProjects.useList({ per_page: 100, archived: 'all' }).rows.map((project) => ({ value: String(project.id), label: pickField(project, 'name') }))
   const userOptions = users.useList({ per_page: 200, sort: 'name', dir: 'asc' }).rows.map((user) => ({ value: String(user.id), label: user.name }))
   const [details, setDetails] = useState(null)
   const params = list.params
@@ -127,6 +133,9 @@ export default function AuditLogPage() {
         </Field>
         <Field label={t.to} className="w-full sm:w-40">
           <Input type="date" dir="ltr" value={params.to ?? ''} onChange={(event) => list.set({ to: event.target.value })} />
+        </Field>
+        <Field label={t.batch} className="w-full sm:w-44">
+          <Input dir="ltr" value={params.batch_id ?? ''} onChange={(event) => list.set({ batch_id: event.target.value.trim() })} placeholder={t.batchHint} autoComplete="off" />
         </Field>
         {list.hasFilters ? (
           <Button variant="ghost" icon={X} onClick={list.reset}>

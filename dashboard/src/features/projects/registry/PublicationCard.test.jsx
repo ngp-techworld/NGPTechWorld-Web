@@ -43,6 +43,21 @@ describe('Publication card', () => {
     expect(screen.queryByText('Please fix the highlighted fields.')).not.toBeInTheDocument()
   })
 
+  it('drops a refused-publish message once what the project lacks has changed', async () => {
+    const api = mockApi(registryRoutes({ publication: { ready: false, missing: ['cover'] }, extra: { 'POST /registry/projects/:id/publish': () => validationError({ publication: ['cover'] }) } }))
+    const { user, queryClient } = renderWithProviders(<ProjectEdit />, { route: '/projects/7', path: '/projects/:id' })
+    const publication = await card()
+
+    await user.click(publication.getByRole('button', { name: 'Publish' }))
+    expect(await publication.findByText('The project was not published. It still needs:')).toBeInTheDocument()
+
+    // a cover was added elsewhere (the Media tab): the record is read again and is now ready
+    api.on('GET /registry/projects/:id', () => ({ data: registryRecord({ publication: { ready: true, missing: [] } }) }))
+    await queryClient.invalidateQueries({ queryKey: ['crud', '/registry/projects'] })
+    await waitFor(() => expect(publication.queryByText('The project was not published. It still needs:')).not.toBeInTheDocument())
+    expect(publication.getByText('Ready to publish')).toBeInTheDocument()
+  })
+
   it('shows what a draft still needs when the API says it is not ready', async () => {
     renderCard({ publication: { ready: false, missing: ['short_ar', 'category'] } })
     const publication = await card()

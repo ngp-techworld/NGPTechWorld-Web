@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Eye, ListOrdered, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useCommon, useStrings } from '@/i18n'
@@ -34,7 +34,7 @@ function extensionOf(name) {
 }
 
 /** The add / edit / view form of one record, generated from `config.fields`. Mounted fresh every time it opens. */
-function RecordForm({ config, record, ctx, canWrite, onSubmit }) {
+function RecordForm({ config, record, ctx, canWrite, onSubmit, onDirtyChange }) {
   const c = useCommon()
   const r = useStrings(registryStrings)
   const fields = useMemo(() => (typeof config.fields === 'function' ? config.fields(ctx, record) : config.fields), [config, ctx, record])
@@ -46,6 +46,8 @@ function RecordForm({ config, record, ctx, canWrite, onSubmit }) {
   const [file, setFile] = useState(null)
   const [fileError, setFileError] = useState('')
   const [otherErrors, setOtherErrors] = useState([])
+  const isDirty = form.formState.isDirty || Boolean(file)
+  useEffect(() => onDirtyChange?.(isDirty), [isDirty, onDirtyChange])
 
   const pickFile = (event) => {
     const next = event.target.files?.[0] ?? null
@@ -119,17 +121,30 @@ function RecordForm({ config, record, ctx, canWrite, onSubmit }) {
  */
 export function RecordDialog({ open, onClose, title, config, record, ctx, canWrite = false, onSubmit, saving = false }) {
   const c = useCommon()
+  const r = useStrings(registryStrings)
+  const confirm = useConfirm()
+  const dirty = useRef(false)
+  // Escape, × and Cancel: never while saving, and only after confirming when something was typed
+  const close = async () => {
+    if (saving) return
+    if (dirty.current && !(await confirm({ title: r.discardTitle, message: r.discardMessage, confirmLabel: r.discard }))) return
+    dirty.current = false
+    onClose()
+  }
+  const setDirty = useCallback((value) => {
+    dirty.current = value
+  }, [])
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title={title}
       size={config.modalSize ?? 'lg'}
       closeOnBackdrop={false}
       footer={
         canWrite ? (
           <>
-            <Button variant="secondary" onClick={onClose} disabled={saving}>
+            <Button variant="secondary" onClick={close} disabled={saving}>
               {c.cancel}
             </Button>
             <Button type="submit" form={FORM_ID} loading={saving}>
@@ -137,13 +152,13 @@ export function RecordDialog({ open, onClose, title, config, record, ctx, canWri
             </Button>
           </>
         ) : (
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={close}>
             {c.close}
           </Button>
         )
       }
     >
-      <RecordForm key={record?.id ?? 'new'} config={config} record={record} ctx={ctx} canWrite={canWrite} onSubmit={onSubmit} />
+      <RecordForm key={record?.id ?? 'new'} config={config} record={record} ctx={ctx} canWrite={canWrite} onSubmit={onSubmit} onDirtyChange={setDirty} />
     </Modal>
   )
 }
@@ -222,7 +237,8 @@ export function CollectionTab({ resource, config, canWrite = false, canCreate = 
   }
 
   const onDelete = async (row) => {
-    const ok = await confirm({ title: r.deleteTitle(config.itemLabel), message: r.deleteMessage(config.rowName?.(row) ?? `#${row.id}`), confirmLabel: c.delete })
+    const message = config.deleteMessage?.(row) ?? r.deleteMessage(config.rowName?.(row) ?? `#${row.id}`)
+    const ok = await confirm({ title: r.deleteTitle(config.itemLabel), message, confirmLabel: c.delete })
     if (ok) remove.mutate(row.id)
   }
 

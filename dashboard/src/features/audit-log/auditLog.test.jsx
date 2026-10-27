@@ -67,11 +67,13 @@ describe('audit log', () => {
     await waitFor(() => expect(screen.getByLabelText('Project').options.length).toBeGreaterThan(1))
     await user.selectOptions(screen.getByLabelText('Project'), '7')
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-10-01' } })
+    await user.type(screen.getByLabelText('Import batch'), '12')
 
     await waitFor(() =>
-      expect(api.calls('GET', '/registry/audit-logs').at(-1).query).toMatchObject({ action: 'published', subject: 'ProjectAccount', user_id: '2', project_id: '7', from: '2026-10-01', per_page: '50' }),
+      expect(api.calls('GET', '/registry/audit-logs').at(-1).query).toMatchObject({ action: 'published', subject: 'ProjectAccount', user_id: '2', project_id: '7', from: '2026-10-01', batch_id: '12', per_page: '50' }),
     )
     expect(screen.getByTestId('location')).toHaveTextContent('action=published')
+    expect(api.calls('GET', '/registry/projects')[0].query).toMatchObject({ archived: 'all' }) // archived projects keep their events
     await user.click(screen.getByRole('button', { name: 'Clear filters' }))
     await waitFor(() => expect(api.calls('GET', '/registry/audit-logs').at(-1).query).toEqual({ page: '1', per_page: '50' }))
   })

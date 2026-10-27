@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Download, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
 import { canCreateProjects } from '@/app/permissions'
@@ -34,6 +35,19 @@ import { useConfig, useRegistryEnv } from './useRegistryEnv'
 /** The default list request of a CollectionTab (see CollectionTab): reused to read a collection for options. */
 const LIST = { per_page: 100, page: 1, sort: 'order', dir: 'asc' }
 
+/**
+ * After a change to `segment`, also re-read the collections that show it: deleting a module or a database nulls the
+ * references to it on the server (features' module, backups' database).
+ */
+function useRefreshWith(projectId, segments) {
+  const queryClient = useQueryClient()
+  const refresh = useRefreshRegistry(projectId)
+  return () => {
+    refresh()
+    segments.forEach((segment) => queryClient.invalidateQueries({ queryKey: ['crud', `${registryPath(projectId)}/${segment}`] }))
+  }
+}
+
 function useCollectionRows(projectId, segment, enabled = true) {
   const hooks = useCrudHooks(`${registryPath(projectId)}/${segment}`)
   return hooks.useList(LIST, { enabled }).rows
@@ -45,12 +59,13 @@ export function FeaturesTab({ registry }) {
   const env = useRegistryEnv()
   const refresh = useRefreshRegistry(registry.id)
   const modules = useCollectionRows(registry.id, 'modules')
+  const modulesChanged = useRefreshWith(registry.id, ['features'])
   const modulesTab = useConfig(modulesConfig, env)
   const featuresTab = useConfig(featuresConfig, env)
   const canWrite = registry.abilities.updatePublic
   return (
     <div className={stack}>
-      <CollectionTab resource={`${registryPath(registry.id)}/modules`} config={modulesTab} canWrite={canWrite} onChanged={refresh} />
+      <CollectionTab resource={`${registryPath(registry.id)}/modules`} config={modulesTab} canWrite={canWrite} onChanged={modulesChanged} />
       <CollectionTab resource={`${registryPath(registry.id)}/features`} config={featuresTab} canWrite={canWrite} ctx={{ modules }} onChanged={refresh} />
     </div>
   )
@@ -206,6 +221,7 @@ export function DataTab({ registry }) {
   const env = useRegistryEnv()
   const refresh = useRefreshRegistry(registry.id)
   const databases = useCollectionRows(registry.id, 'databases')
+  const databasesChanged = useRefreshWith(registry.id, ['backups'])
   const data = useConfig(dataFields, env)
   const databasesTab = useConfig(databasesConfig, env)
   const backups = useConfig(backupsConfig, env)
@@ -223,7 +239,7 @@ export function DataTab({ registry }) {
           canWrite={abilities.updateSensitive}
         />
       ) : null}
-      <CollectionTab resource={`${registryPath(registry.id)}/databases`} config={databasesTab} canWrite={abilities.updateSensitive} onChanged={refresh} />
+      <CollectionTab resource={`${registryPath(registry.id)}/databases`} config={databasesTab} canWrite={abilities.updateSensitive} onChanged={databasesChanged} />
       <CollectionTab resource={`${registryPath(registry.id)}/backups`} config={backups} canWrite={abilities.updateSensitive} ctx={{ databases }} onChanged={refresh} />
     </div>
   )

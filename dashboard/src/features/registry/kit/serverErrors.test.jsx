@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import common from '@/i18n/common'
 import { ApiError } from '@/lib/api'
 import { setToken } from '@/lib/storage'
@@ -21,6 +21,10 @@ describe('server errors', () => {
     )
     expect(err.errors.notes).toEqual([r.secretDetected])
     expect(err.errors.key).toEqual(['Taken.'])
+    expect(localizeErrors(unprocessable({ key: ['The key has already been taken.'], ip: ['The ip field must be a valid IP address.'] }), strings.ar).errors).toEqual({
+      key: [strings.ar.alreadyTaken],
+      ip: [strings.ar.invalidIp],
+    })
     expect(err.status).toBe(422)
   })
 
@@ -52,6 +56,19 @@ describe('AuthImage', () => {
     await waitFor(() => expect(api.calls('GET', '/registry/files/screenshots/5')).toHaveLength(1))
     expect(api.calls('GET', '/registry/files/screenshots/5')[0].headers.authorization).toBe('Bearer secret-token')
     expect(api.calls('GET', '/registry/files/screenshots/5')[0].query).toEqual({ w: '480' })
+  })
+
+  it('revokes the object URL when the image goes away or its URL changes', async () => {
+    mockApi({ 'GET /registry/files/screenshots/:id': () => reply(200, { fake: 'image' }) })
+    const revoke = vi.spyOn(URL, 'revokeObjectURL')
+    const { rerender, unmount } = renderWithProviders(<AuthImage src="http://localhost/api/admin/registry/files/screenshots/5" alt="One" />)
+    const first = (await screen.findByRole('img', { name: 'One' })).getAttribute('src')
+
+    rerender(<AuthImage src="http://localhost/api/admin/registry/files/screenshots/6" alt="One" />)
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith(first))
+    const second = (await screen.findByRole('img', { name: 'One' })).getAttribute('src')
+    unmount()
+    expect(revoke).toHaveBeenCalledWith(second)
   })
 
   it('uses a public URL directly', () => {

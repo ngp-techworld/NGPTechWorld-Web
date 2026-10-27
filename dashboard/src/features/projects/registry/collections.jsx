@@ -110,7 +110,7 @@ export const featuresConfig = ({ t, r, pickField }) => ({
     { name: 'tests.passed', type: 'boolSelect', label: t.testsPassed },
     { name: 'tests.paths', type: 'lines', label: t.testsPaths, maxItems: 30, itemMax: 300, dir: 'ltr' },
   ],
-  columns: ({ canWrite, update, pendingData, ctx }) => [
+  columns: ({ canWrite, update, pendingData, isUpdating, ctx }) => [
     {
       key: 'name',
       header: t.name,
@@ -134,7 +134,7 @@ export const featuresConfig = ({ t, r, pickField }) => ({
         return (
           <div className="flex flex-col items-start gap-1">
             {canWrite ? (
-              <Switch checked={Boolean(value)} onChange={(next) => update(row, { is_public: next })} aria-label={t.publicToggle(pickField(row, 'name'))} />
+              <Switch checked={Boolean(value)} onChange={(next) => update(row, { is_public: next })} aria-label={t.publicToggle(pickField(row, 'name'))} disabled={isUpdating(row)} />
             ) : (
               <Badge tone={value ? 'success' : 'neutral'}>{value ? r.yes : r.no}</Badge>
             )}

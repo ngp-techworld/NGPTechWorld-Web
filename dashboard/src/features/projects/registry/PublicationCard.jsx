@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Archive, ArchiveRestore, CheckCircle2, CircleAlert, Eye, EyeOff, Star, StarOff, Trash2 } from 'lucide-react'
 import { COMPLETENESS_GROUPS, actionErrorText, publicationLabels, useProjectAction } from '@/features/registry/kit'
@@ -69,6 +69,9 @@ export function PublicationCard({ registry }) {
   const action = useProjectAction(registry.id)
   const [refused, setRefused] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  // a refused publish is old news once what the project lacks has changed (a cover added, a name filled in)
+  const publicationState = JSON.stringify(registry.publication ?? null)
+  useEffect(() => setRefused(null), [publicationState])
   const { abilities, publication } = registry
   const published = registry.publication_status === 'published'
   const archived = Boolean(registry.archived_at)

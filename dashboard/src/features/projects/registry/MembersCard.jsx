@@ -51,6 +51,8 @@ const membersConfig = ({ t, r }, me) => ({
   sort: { sort: 'created_at', dir: 'asc' },
   defaults: { member_role: 'developer' },
   rowName: (row) => row.user?.name ?? `#${row.user_id}`,
+  // removing yourself ends your access to this project's sensitive tabs (and to managing its members)
+  deleteMessage: (row) => (row.user_id === me?.id ? t.removeYourselfMessage : t.removeMemberMessage(row.user?.name ?? `#${row.user_id}`)),
   fields: (ctx, record) => [
     record
       ? null

@@ -13,6 +13,10 @@ const KNOWN = [
   [/already in the catalog/i, 'alreadyInCatalog'],
   [/public screenshot can be the cover|cannot be the cover/i, 'privateCover'],
   [/archived project cannot be featured/i, 'archivedNoFeature'],
+  [/already listed for the project/i, 'duplicateInProject'],
+  [/already listed for that environment/i, 'duplicateInEnvironment'],
+  [/has already been taken/i, 'alreadyTaken'],
+  [/must be a valid IP address/i, 'invalidIp'],
 ]
 
 /** One server message in the UI language when it is one the registry is known to send; otherwise unchanged. */

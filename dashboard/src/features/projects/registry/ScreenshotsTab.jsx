@@ -22,7 +22,8 @@ import { useRegistryEnv } from './useRegistryEnv'
 
 const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 // Reordering sends every id (the API sets `order` = position): only offered while the whole list fits one page.
-const PER_PAGE = 100
+// 48 a page: each private thumbnail is one request to the file stream, which allows 60 a minute.
+const PER_PAGE = 48
 
 /** The fields of a screenshot (ScreenshotController::rules). Visibility is set at upload, then by the switch. */
 function screenshotFields({ t, r, c }, { upload }) {

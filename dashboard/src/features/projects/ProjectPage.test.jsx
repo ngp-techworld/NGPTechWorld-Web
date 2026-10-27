@@ -328,6 +328,16 @@ describe('project page: members', () => {
     expect(region('Project members').getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
+  it('warns a manager who removes themselves that they lose access', async () => {
+    const own = [{ ...members[0], user_id: manager.id, user: { ...members[0].user, id: manager.id } }]
+    const { user } = renderPage({ abilities: ABILITIES.managerMember, authUser: manager, extra: { 'GET /registry/projects/:id/members': () => paginated(own), 'GET /registry/users': () => paginated([]) } })
+    const card = await findRegion('Project members')
+    await card.findByText('layla@ngptechworld.com')
+
+    await user.click(card.getByRole('button', { name: 'Delete' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Remove yourself from the project members? You lose its sensitive tabs')
+  })
+
   it('shows the list without any change control to a viewer', async () => {
     renderPage({ abilities: ABILITIES.viewer, authUser: { ...manager, registry_role: 'viewer' }, extra: { 'GET /registry/projects/:id/members': () => paginated(members) } })
     await (await findRegion('Project members')).findByText('layla@ngptechworld.com')
@@ -377,6 +387,50 @@ describe('project page: registry tabs', () => {
     })
     const record = (await screen.findByText('Queue stuck')).closest('tr')
     expect(within(record).getByText('Sara')).toBeInTheDocument()
+  })
+
+  it('re-reads the features after a module is deleted (the API clears their module)', async () => {
+    const view = renderPage({
+      route: '/projects/7?tab=features',
+      extra: {
+        'GET /registry/projects/:id/modules': () => paginated([{ id: 3, key: 'orders', name_ar: 'الطلبات', name_en: 'Orders' }]),
+        'DELETE /registry/projects/:id/modules/:item': () => null,
+      },
+    })
+    const { user, api } = view
+    await screen.findByText('Orders')
+    const before = api.calls('GET', '/registry/projects/7/features').length
+
+    await user.click(within(screen.getByRole('region', { name: 'Modules' })).getByRole('button', { name: 'Delete' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(api.calls('GET', '/registry/projects/7/features').length).toBeGreaterThan(before))
+    await waitFor(() => expect(api.calls('GET', '/registry/projects/7').length).toBeGreaterThan(1)) // completeness too
+  })
+
+  it('locks the public switch of a feature while its change is being saved', async () => {
+    let release
+    const gate = new Promise((resolve) => {
+      release = resolve
+    })
+    const feature = { id: 5, key: 'cart', module_id: null, name_ar: 'السلة', name_en: 'Cart', status: 'verified', is_public: false, tests: null, evidence: [] }
+    const { user } = renderPage({
+      route: '/projects/7?tab=features',
+      extra: {
+        'GET /registry/projects/:id/features': () => paginated([feature]),
+        'PUT /registry/projects/:id/features/:item': async ({ body }) => {
+          await gate
+          return { data: { ...feature, ...body } }
+        },
+      },
+    })
+    const toggle = await screen.findByRole('switch', { name: 'Public: Cart' })
+
+    await user.click(toggle)
+    expect(toggle).toBeDisabled()
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    release()
+    await waitFor(() => expect(toggle).toBeEnabled())
   })
 
   it('ticks a secret off the Bitwarden checklist', async () => {

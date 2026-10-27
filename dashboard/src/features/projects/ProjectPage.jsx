@@ -112,6 +112,9 @@ export function ProjectPage({ project, registry, fallbackAbilities = READ_ONLY, 
   const canEdit = Boolean(abilities.updatePublic)
   const keys = useMemo(() => visibleTabKeys(abilities, hasRegistry), [abilities, hasRegistry])
   const [tab, setTab] = useActiveTab(keys)
+  // a tab opened once stays mounted (hidden): unsaved edits of its groups and dialogs survive a tab switch
+  const [visited, setVisited] = useState(() => new Set([tab]))
+  if (!visited.has(tab)) setVisited(new Set([...visited, tab]))
   const [coverBusy, setCoverBusy] = useState(false)
   const [galleryBusy, setGalleryBusy] = useState(false)
   const uploading = coverBusy || galleryBusy
@@ -199,7 +202,7 @@ export function ProjectPage({ project, registry, fallbackAbilities = READ_ONLY, 
   }))
   const isFormTab = FORM_TABS.includes(tab)
   const panel = (key, children, props = {}) => (
-    <TabPanel idPrefix={PREFIX} value={key} active={tab} {...props}>
+    <TabPanel idPrefix={PREFIX} value={key} active={tab} {...props} keepMounted={props.keepMounted || visited.has(key)}>
       <Suspense fallback={<PageSpinner />}>{children}</Suspense>
     </TabPanel>
   )

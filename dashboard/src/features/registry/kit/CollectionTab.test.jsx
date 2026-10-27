@@ -118,7 +118,7 @@ describe('CollectionTab', () => {
     await user.type(dialog().getByLabelText(/^Notes/), 'password=Hunter2024')
     await user.click(dialog().getByRole('button', { name: 'Save' }))
 
-    expect(await dialog().findByText('The key has already been taken.')).toBeInTheDocument()
+    expect(await dialog().findByText('This value is already in use.')).toBeInTheDocument() // Laravel's unique message, in the UI language
     expect(dialog().getByText(/This looks like a password, key or token\. Store the secret in the vault/)).toBeInTheDocument()
     expect(dialog().queryByText(SECRET)).not.toBeInTheDocument()
     expect(dialog().getByLabelText(/^Notes/)).toHaveAttribute('aria-invalid', 'true')
@@ -208,5 +208,43 @@ describe('CollectionTab', () => {
     expect(body.get('file').name).toBe('spec.pdf')
     expect(body.get('title')).toBe('Spec')
     expect(body.get('is_public')).toBe('0')
+  })
+
+  it('asks before closing a dialog with unsaved changes (Escape or Cancel)', async () => {
+    server()
+    const { user } = render()
+
+    await user.click(await screen.findByText('Sign-in'))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument() // nothing typed: closes at once
+
+    await user.click(screen.getByText('Sign-in'))
+    await user.type(dialog().getByLabelText(/^Notes/), 'half written')
+    await user.click(dialog().getByRole('button', { name: 'Cancel' }))
+    const ask = within(screen.getByRole('dialog', { name: 'Discard the changes?' }))
+    await user.click(ask.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByLabelText(/^Notes/)).toHaveValue('half written') // kept
+
+    await user.keyboard('{Escape}')
+    await user.click(within(screen.getByRole('dialog', { name: 'Discard the changes?' })).getByRole('button', { name: 'Close without saving' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('re-reads what depends on the collection after a change', async () => {
+    let calls = 0
+    server({ 'POST /registry/projects/:id/modules': ({ body }) => reply(201, { data: { id: 2, ...body } }) })
+    const onChanged = () => {
+      calls += 1
+    }
+    const { user } = renderWithProviders(<CollectionTab resource={resource} config={config} canWrite onChanged={onChanged} />)
+    await screen.findByText('Sign-in')
+
+    await user.click(screen.getByRole('button', { name: 'Add module' }))
+    await user.type(dialog().getByLabelText(/^Key/), 'orders')
+    await user.type(dialog().getByLabelText('Name (Arabic)'), 'ط')
+    await user.type(dialog().getByLabelText('Name (English)'), 'O')
+    await user.click(dialog().getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(calls).toBe(1))
   })
 })

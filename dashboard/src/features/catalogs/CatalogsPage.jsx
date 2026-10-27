@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { Building2, Cpu } from 'lucide-react'
 import { useAuth } from '@/app/AuthProvider'
@@ -71,6 +72,10 @@ export default function CatalogsPage() {
   const setTab = useCallback((next) => setSearchParams(next === 'technologies' ? {} : { tab: next }, { replace: true }), [setSearchParams])
   const technologies = useMemo(() => technologiesConfig(t, r), [t, r])
   const industries = useMemo(() => industriesConfig(t, r, pickField), [t, r, pickField])
+  const queryClient = useQueryClient()
+  // a renamed or recategorised technology shows inside every project's tech stack
+  const technologiesChanged = () =>
+    queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'crud' && /^\/registry\/projects\/\d+\/technologies$/.test(String(query.queryKey[1])) })
 
   return (
     <>
@@ -88,7 +93,7 @@ export default function CatalogsPage() {
           ]}
         />
         <TabPanel idPrefix={PREFIX} value="technologies" active={tab}>
-          <CollectionTab resource="/registry/technologies" config={technologies} canWrite={canWrite} />
+          <CollectionTab resource="/registry/technologies" config={technologies} canWrite={canWrite} onChanged={technologiesChanged} />
         </TabPanel>
         <TabPanel idPrefix={PREFIX} value="industries" active={tab}>
           <CollectionTab resource="/registry/industries" config={industries} canWrite={canWrite} />
