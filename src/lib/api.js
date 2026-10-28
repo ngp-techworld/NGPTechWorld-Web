@@ -14,12 +14,31 @@ async function req(path, options) {
   return res.status === 204 ? null : res.json()
 }
 
+/** `?a=1&b=x` from the params that carry a value; empty strings, null and undefined are left out. */
+function queryString(params = {}) {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue
+    query.set(key, String(value))
+  }
+  const text = query.toString()
+  return text ? `?${text}` : ''
+}
+
 export const api = {
   getStats: async () => (await req('/stats')).data,
   getServices: async () => (await req('/services')).data,
   getProjects: async (category) =>
     (await req(`/projects${category && category !== 'all' ? `?category=${category}` : ''}`)).data,
-  getProject: async (slug) => (await req(`/projects/${slug}`)).data,
+  getProject: async (slug) => (await req(`/projects/${encodeURIComponent(slug)}`)).data,
+  // The /portfolio page: searched, filtered and paged on the server. Takes the API's own parameter
+  // names (search, category, industry, technology, platform, status, featured, page, per_page) and
+  // answers `{ data, meta }`, since "load more" needs meta.current_page / meta.last_page.
+  getPortfolio: async (params) => {
+    const { data, meta } = await req(`/portfolio${queryString(params)}`)
+    return { data, meta }
+  },
+  getPortfolioFacets: async () => (await req('/portfolio/facets')).data,
   getTestimonials: async () => (await req('/testimonials')).data,
   getPartners: async () => (await req('/partners')).data,
   getFaqs: async () => (await req('/faqs')).data,

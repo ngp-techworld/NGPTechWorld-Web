@@ -46,7 +46,7 @@ export function Field({ label, hint, error, required = false, htmlFor, className
         {children}
         {message ? (
           <p id={errorId} className="mt-1.5 text-xs font-medium text-danger">
-            {message}
+            <bdi>{message}</bdi>
           </p>
         ) : null}
         {hint ? (

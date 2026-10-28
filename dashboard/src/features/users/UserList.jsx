@@ -67,7 +67,17 @@ export default function UserList() {
       key: 'role',
       header: t.roleColumn,
       hideBelow: 'sm',
-      cell: (row) => <Badge tone={row.is_super_admin ? 'gold' : 'neutral'}>{row.is_super_admin ? t.roleSuperAdmin : t.roleAdmin}</Badge>,
+      cell: (row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge tone={row.is_super_admin ? 'gold' : 'neutral'}>{row.is_super_admin ? t.roleSuperAdmin : t.roleAdmin}</Badge>
+          {row.registry_role ? (
+            <Badge tone="accent">
+              <span className="sr-only">{t.registryRoleColumn}: </span>
+              {t.registryRoles[row.registry_role] ?? row.registry_role}
+            </Badge>
+          ) : null}
+        </div>
+      ),
     },
     { key: 'created_at', header: c.createdAt, sortable: true, hideBelow: 'md', cell: (row) => f.date(row.created_at) },
   ]

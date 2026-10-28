@@ -753,3 +753,33 @@
   color: #fff;
   background: rgba(150, 120, 190, .16);
 }
+
+/* ── Social buttons ────────────────────────────────────────────────────────────
+   Used in the footer. Sized by the touch target rather than the mark: 40px is the
+   smallest square a thumb reliably hits, and the glyph inside stays at 17. */
+.ngp-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--soft);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .03);
+  transition: color .25s ease, border-color .25s ease, background-color .25s ease, transform .25s ease;
+}
+
+.ngp-social:hover,
+.ngp-social:focus-visible {
+  color: #fff;
+  border-color: rgba(150, 120, 190, .55);
+  background: rgba(150, 120, 190, .16);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ngp-social { transition: none; }
+  .ngp-social:hover,
+  .ngp-social:focus-visible { transform: none; }
+}

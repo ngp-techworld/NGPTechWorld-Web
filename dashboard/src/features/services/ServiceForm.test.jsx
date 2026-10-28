@@ -6,6 +6,7 @@ import ServiceCreate from './ServiceCreate'
 import ServiceEdit from './ServiceEdit'
 import { SERVICE_ICON_KEYS } from './icons'
 import { makeServiceSchema } from './schema'
+import strings from './strings'
 
 const service = {
   id: 7,
@@ -70,6 +71,8 @@ describe('ServiceCreate', () => {
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/services$/))
     expect(server.calls('POST', '/services')[0].body).toEqual({
+      // Blank, so the API derives it from the English title.
+      slug: null,
       icon_key: 'cloud',
       title_ar: 'عنوان',
       title_en: 'A title',
@@ -186,7 +189,7 @@ describe('service schema', () => {
   const valid = { icon_key: 'web', title_ar: 'ع', title_en: 'T', description_ar: 'و', description_en: 'D', features_ar: [], features_en: [], is_active: true }
 
   it('accepts exactly the seven icon keys of the API', () => {
-    const schema = makeServiceSchema(c)
+    const schema = makeServiceSchema(c, strings.en)
     expect(SERVICE_ICON_KEYS).toEqual(['web', 'mobile', 'design', 'erp', 'cloud', 'ai', 'support'])
     SERVICE_ICON_KEYS.forEach((key) => expect(schema.safeParse({ ...valid, icon_key: key }).success).toBe(true))
     expect(schema.safeParse({ ...valid, icon_key: 'rocket' }).success).toBe(false)
@@ -194,7 +197,7 @@ describe('service schema', () => {
   })
 
   it('mirrors the API length limits', () => {
-    const schema = makeServiceSchema(c)
+    const schema = makeServiceSchema(c, strings.en)
     expect(schema.safeParse({ ...valid, title_en: 'x'.repeat(255) }).success).toBe(true)
     expect(schema.safeParse({ ...valid, title_en: 'x'.repeat(256) }).success).toBe(false)
     expect(schema.safeParse({ ...valid, description_ar: 'x'.repeat(5000) }).success).toBe(true)
@@ -248,6 +251,7 @@ describe('ServiceEdit', () => {
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/services$/))
     expect(server.calls('PUT', '/services/7')[0].body).toEqual({
+      slug: null,
       icon_key: 'support',
       title_ar: service.title_ar,
       title_en: 'ERP systems',
@@ -310,5 +314,59 @@ describe('ServiceEdit', () => {
 
     expect(await screen.findByLabelText('Title (English)')).toHaveValue('Enterprise systems')
     screen.getAllByRole('radio').forEach((radio) => expect(radio).toHaveAttribute('aria-checked', 'false'))
+  })
+})
+
+describe('the slug and the link it makes', () => {
+  it('sends the slug the admin typed instead of deriving one', async () => {
+    const server = mockApi({ 'POST /services': reply({ data: { ...service, id: 9 } }) })
+    const { user } = renderWithProviders(<ServiceCreate />)
+
+    await fillAll(user)
+    await user.type(screen.getByLabelText(/^Slug/), 'domain-registration')
+    await user.click(screen.getByRole('button', { name: /save|حفظ/i }))
+
+    await waitFor(() => expect(server.calls('POST', '/services')).toHaveLength(1))
+    expect(server.calls('POST', '/services')[0].body.slug).toBe('domain-registration')
+  })
+
+  it('refuses a slug that would not survive being put in a URL', async () => {
+    mockApi({ 'POST /services': reply({ data: service }) })
+    const { user } = renderWithProviders(<ServiceCreate />)
+
+    await fillAll(user)
+    await user.type(screen.getByLabelText(/^Slug/), 'Domain Registration!')
+    await user.click(screen.getByRole('button', { name: /save|حفظ/i }))
+
+    expect(await screen.findByText(strings.en.slugInvalid)).toBeInTheDocument()
+  })
+
+  it('shows the ready-made contact link for a service that has a slug', async () => {
+    mockApi({ 'GET /services/:id': () => ({ data: { ...service, slug: 'domain-registration' } }) })
+    renderWithProviders(<ServiceEdit />, { route: '/services/7', path: '/services/:id' })
+
+    const link = await screen.findByDisplayValue('https://www.ngptechworld.com/contact?service=domain-registration')
+    expect(link).toHaveAttribute('readonly')
+  })
+
+  it('shows no link until there is a slug to build one from', async () => {
+    mockApi({})
+    renderWithProviders(<ServiceCreate />)
+
+    // Nothing honest to show on an empty create form — the slug does not exist yet.
+    expect(screen.queryByLabelText(strings.en.serviceLink)).not.toBeInTheDocument()
+  })
+
+  it('follows the slug as it is typed, so the link is right before saving', async () => {
+    mockApi({ 'GET /services/:id': () => ({ data: { ...service, slug: 'old-name' } }) })
+    const { user } = renderWithProviders(<ServiceEdit />, { route: '/services/7', path: '/services/:id' })
+
+    // The full link, not /old-name/ — that appears in the slug field as well.
+    await screen.findByDisplayValue('https://www.ngptechworld.com/contact?service=old-name')
+    const field = screen.getByLabelText(/^Slug/)
+    await user.clear(field)
+    await user.type(field, 'new-name')
+
+    expect(await screen.findByDisplayValue('https://www.ngptechworld.com/contact?service=new-name')).toBeInTheDocument()
   })
 })

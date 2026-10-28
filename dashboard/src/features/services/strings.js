@@ -2,6 +2,14 @@
 // delete, "Active"…) come from `useCommon()` — only what is specific to this feature is here.
 export default {
   ar: {
+    slug: 'الرابط المختصر (slug)',
+    slugHintCreate: 'اتركه فارغًا ليُولَّد تلقائيًا من العنوان الإنجليزي. أحرف إنجليزية صغيرة وأرقام وشرطات فقط.',
+    slugHintEdit: 'اتركه فارغًا للإبقاء على الرابط الحالي. تغييره يُبطل أي رابط قديم لهذه الخدمة.',
+    slugInvalid: 'استخدم أحرفًا إنجليزية صغيرة وأرقامًا وشرطات فقط (مثال: domain-registration).',
+    serviceLink: 'رابط طلب هذه الخدمة',
+    serviceLinkHint: 'من يفتحه تكون الخدمة مختارة مسبقًا في نموذج التواصل. ضعه في إعلان أو رسالة.',
+    copy: 'نسخ',
+    copied: 'تم النسخ ✓',
     title: 'الخدمات',
     description: 'الخدمات التي تعرضها الشركة في الموقع، لكل خدمة أيقونة ووصف وقائمة مزايا.',
     new: 'خدمة جديدة',
@@ -34,6 +42,14 @@ export default {
     },
   },
   en: {
+    slug: 'Slug',
+    slugHintCreate: 'Leave blank to generate it from the English title. Lowercase letters, numbers and hyphens only.',
+    slugHintEdit: 'Leave blank to keep the current one. Changing it breaks any link already handed out for this service.',
+    slugInvalid: 'Use lowercase letters, numbers and hyphens only (for example domain-registration).',
+    serviceLink: 'Link that requests this service',
+    serviceLinkHint: 'Opening it preselects the service in the contact form. Put it in an advert or a message.',
+    copy: 'Copy',
+    copied: 'Copied ✓',
     title: 'Services',
     description: 'The services the company shows on the website — each with an icon, a description and a list of features.',
     new: 'New service',

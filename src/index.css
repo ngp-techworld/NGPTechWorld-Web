@@ -1,5 +1,6 @@
 @import './styles/tokens.css';
 @import './styles/fx.css';
+@import './styles/portfolio.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

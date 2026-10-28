@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useLang } from '../i18n/LanguageContext'
 import { useSections, useSiteSettings } from '../lib/SiteSettings'
 import VisitCounter from './VisitCounter'
+import SocialLinks from './SocialLinks'
 
 export default function Footer() {
   const { t } = useLang()
@@ -32,6 +33,9 @@ export default function Footer() {
             {settings.email && <span dir="ltr">{settings.email}</span>}
             {settings.phone && <span dir="ltr">{settings.phone}</span>}
           </div>
+          {/* Renders nothing at all when the dashboard has no social URLs set, so the column
+              keeps its shape instead of ending in an empty heading. */}
+          <SocialLinks className="mt-6" />
         </div>
       </div>
       {/* The rights line and the counter share the bottom bar: side by side where there is room,

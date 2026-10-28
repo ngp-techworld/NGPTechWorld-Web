@@ -1,0 +1,638 @@
+/* ==========================================================================
+   The portfolio pages (/portfolio and /portfolio/:slug).
+
+   Everything here reads the semantic tokens from tokens.css (--surface-*, --text-*, --line-*,
+   --brand-*), never a raw colour, so these pages follow a light theme the day one is switched on.
+   Directions are logical (inline-start / inline-end) and the few things that point — chevrons,
+   the problem → solution trace — flip under [dir='rtl'].
+
+   Motion is limited to what answers the visitor (hover, open, switch) plus the site's existing
+   entrance system (data-rise). All of it stops under prefers-reduced-motion at the bottom.
+   ========================================================================== */
+
+/* ---------- shared bits ---------- */
+
+.pf-dir { flex: none }
+[dir='rtl'] .pf-dir { transform: scaleX(-1) }
+
+.pf-focus:focus-visible,
+.pf-card__link:focus-visible,
+.pf-btn:focus-visible,
+.pf-chip:focus-visible,
+.pf-shot:focus-visible,
+.pf-feature-card:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: 3px;
+}
+
+.pf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color .25s ease, border-color .25s ease, color .25s ease, transform .25s ease;
+}
+.pf-btn--primary { background: var(--surface-brand); color: var(--text-on-brand); border: 1px solid transparent }
+.pf-btn--primary:hover { background: var(--surface-brand-hover); transform: translateY(-1px) }
+.pf-btn--ghost { background: var(--surface-1); color: var(--text-strong); border: 1px solid var(--line-medium) }
+.pf-btn--ghost:hover { border-color: var(--line-brand); background: var(--surface-3) }
+.pf-btn[disabled],
+.pf-btn[aria-disabled='true'] { opacity: .6; cursor: progress; transform: none }
+
+/* A technology name: monospace because it is an identifier, the one place the mono face is used. */
+/* Never wider than the space it is in: a long name (a .NET namespace, say) is cut with an ellipsis,
+   and the full name is in its title attribute. */
+.pf-chip {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  color: var(--text-body);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+a.pf-chip { transition: border-color .2s ease, color .2s ease, background-color .2s ease }
+a.pf-chip:hover { border-color: var(--line-brand); color: var(--text-strong); background: var(--surface-3) }
+
+.pf-platforms { display: flex; align-items: center; gap: 8px; color: var(--text-faint) }
+.pf-platforms [role='img'] { display: inline-flex }
+
+/* Long unspaced text — a project name, a URL pasted into a description — may break anywhere rather
+   than push its box wider than a phone screen. Declared before the components so their own rules
+   stay free to override it. */
+.pf-hero__title,
+.pf-card__title,
+.pf-card__short,
+.pf-card__highlight,
+.pf-feature-card__name,
+.pf-detail-hero__title,
+.pf-detail-hero__lead,
+.pf-prose,
+.pf-ps__text,
+.pf-feature__name,
+.pf-feature__desc,
+.pf-module__name,
+.pf-module__desc,
+.pf-group__name,
+.pf-quality__title,
+.pf-quality__desc,
+.pf-ticks li,
+.pf-aside__text,
+.pf-band__title,
+.pf-band__sub,
+.pf-lightbox__title,
+.pf-lightbox__desc,
+.pf-shot__caption { overflow-wrap: anywhere }
+.pf-feature > div { min-width: 0 }
+
+/* ---------- /portfolio hero ---------- */
+
+.pf-hero { padding-top: clamp(28px, 6vw, 72px); padding-bottom: clamp(28px, 4vw, 44px) }
+.pf-hero__title {
+  font-size: clamp(34px, 6.4vw, 60px);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -.02em;
+  color: var(--text-strong);
+}
+[dir='rtl'] .pf-hero__title { letter-spacing: 0; line-height: 1.2 }
+.pf-hero__sub {
+  margin-top: 18px;
+  max-width: 56ch;
+  font-size: clamp(15.5px, 2vw, 18px);
+  line-height: 1.75;
+  color: var(--text-muted);
+}
+
+/* The live count, set as a sentence rather than a row of stat tiles: the numbers are the point,
+   so they are enlarged in place and the words around them stay at reading size. */
+.pf-index {
+  margin-top: clamp(22px, 3vw, 30px);
+  font-size: clamp(17px, 2.3vw, 22px);
+  line-height: 1.5;
+  color: var(--text-body);
+}
+.pf-index__num {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 1.75em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-brand);
+  vertical-align: -0.08em;
+}
+
+/* ---------- featured strip ---------- */
+
+.pf-strip { margin-top: clamp(30px, 5vw, 52px) }
+.pf-strip__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px }
+.pf-strip__title { font-size: 17px; font-weight: 600; color: var(--text-strong) }
+.pf-strip__nav { display: flex; gap: 8px }
+.pf-strip__nav button {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line-medium);
+  background: var(--surface-1);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease, background-color .2s ease;
+}
+.pf-strip__nav button:hover { border-color: var(--line-brand); color: var(--text-strong); background: var(--surface-3) }
+
+.pf-strip__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: min(84%, 440px);
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  /* Fades the trailing edge so a cut-off card reads as "more this way" rather than as a bug. */
+  -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+  mask-image: linear-gradient(to right, #000 88%, transparent);
+}
+[dir='rtl'] .pf-strip__track {
+  -webkit-mask-image: linear-gradient(to left, #000 88%, transparent);
+  mask-image: linear-gradient(to left, #000 88%, transparent);
+}
+.pf-strip__track::-webkit-scrollbar { display: none }
+
+.pf-feature-card {
+  position: relative;
+  display: block;
+  scroll-snap-align: start;
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--line-soft);
+  background: var(--brand-900);
+}
+.pf-feature-card__media { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.22, .75, .25, 1) }
+.pf-feature-card:hover .pf-feature-card__media { transform: scale(1.045) }
+.pf-feature-card__scrim { position: absolute; inset: 0; background: var(--scrim); pointer-events: none }
+.pf-feature-card__body { position: absolute; inset-inline: 0; bottom: 0; padding: clamp(16px, 2.4vw, 22px) }
+/* Text on a photograph stays light in either theme. */
+.pf-feature-card__cat { font-size: 12.5px; color: #D9CCEA }
+.pf-feature-card__name { margin-top: 4px; font-size: clamp(18px, 2.2vw, 22px); font-weight: 700; line-height: 1.25; color: #FFFFFF }
+.pf-feature-card__short {
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .78);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- toolbar ---------- */
+
+.pf-toolbar {
+  display: grid;
+  gap: 16px;
+  padding: clamp(14px, 2.4vw, 22px);
+  border-radius: 20px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-1);
+}
+
+.pf-search { position: relative }
+.pf-search__icon {
+  position: absolute;
+  inset-inline-start: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.pf-search__input {
+  width: 100%;
+  min-height: 50px;
+  padding-block: 12px;
+  padding-inline: 46px 16px;
+  border-radius: 13px;
+  border: 1px solid var(--line-medium);
+  background: var(--surface-sunken);
+  color: var(--text-strong);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.pf-search__input::placeholder { color: var(--text-faint) }
+.pf-search__input:focus { border-color: var(--line-brand); box-shadow: 0 0 0 3px var(--brand-glow) }
+/* The native clear button is the one control here that cannot be themed; the field is short enough
+   to clear by hand. */
+.pf-search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none }
+
+.pf-pills { display: flex; flex-wrap: wrap; gap: 8px }
+/* Built on the site's .pill / .pill-on (index.css) so the category pills look like every other
+   filter on the site; this only adds the count and a focus ring. */
+.pf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-medium);
+  background: var(--surface-1);
+  color: var(--text-body);
+  font-size: 14px;
+  cursor: pointer;
+}
+.pf-pill:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px }
+.pf-pill__count { font-family: 'Poppins', sans-serif; font-size: 12px; font-variant-numeric: tabular-nums; opacity: .7 }
+
+.pf-selects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.pf-select {
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-medium);
+  background: var(--surface-sunken);
+  color: var(--text-strong);
+  font-size: 14px;
+  outline: none;
+}
+.pf-select:focus-visible { border-color: var(--line-brand); box-shadow: 0 0 0 3px var(--brand-glow) }
+
+.pf-toolbar__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 18px }
+.pf-count { font-size: 14px; color: var(--text-muted) }
+.pf-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--text-brand);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 2px;
+  border-radius: 6px;
+}
+.pf-clear:hover { color: var(--text-strong) }
+.pf-clear:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px }
+
+/* ---------- grid + card ---------- */
+
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin-top: 18px; list-style: none }
+@media (min-width: 640px) { .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+@media (min-width: 1024px) { .pf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+
+.pf-card { display: flex; flex-direction: column; height: 100% }
+.pf-card__cover { position: relative; aspect-ratio: 16 / 10; overflow: hidden; flex: none }
+.pf-card__cover-inner { position: absolute; inset: 0; transition: transform .7s cubic-bezier(.22, .75, .25, 1) }
+.pf-card:hover .pf-card__cover-inner { transform: scale(1.05) }
+.pf-card__body { display: flex; flex: 1; flex-direction: column; gap: 10px; padding: 18px 20px 20px }
+.pf-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.pf-card__cat { font-size: 12.5px; color: var(--text-brand) }
+.pf-card__title { font-size: clamp(17px, 2.2vw, 19px); font-weight: 650; line-height: 1.35; color: var(--text-strong) }
+/* Stretched link: the title is the one link, and its hit area covers the card. A separate
+   <a> around everything would swallow the demo button nested inside it. */
+.pf-card__link { border-radius: 4px; outline: none }
+.pf-card__link::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 20px }
+.pf-card__link:focus-visible { outline: none }
+.pf-card:has(.pf-card__link:focus-visible) { outline: 2px solid var(--line-focus); outline-offset: 3px }
+.pf-card__short {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pf-card__highlight { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.55; color: var(--text-body) }
+.pf-hexdot {
+  flex: none;
+  width: 9px;
+  height: 10px;
+  margin-top: .42em;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--brand-300);
+}
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none }
+.pf-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft) }
+.pf-card__cue { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); transition: color .25s ease }
+.pf-card:hover .pf-card__cue { color: var(--text-strong) }
+/* Above the stretched link, so it is a click target of its own. */
+.pf-card__demo {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line-brand);
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color .2s ease, color .2s ease;
+}
+.pf-card__demo:hover { background: var(--surface-3); color: var(--text-strong) }
+.pf-card__demo:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px }
+
+/* ---------- states ---------- */
+
+.pf-state {
+  margin-top: 18px;
+  padding: clamp(32px, 6vw, 56px) 24px;
+  border-radius: 20px;
+  border: 1px dashed var(--line-medium);
+  text-align: center;
+}
+.pf-state__title { font-size: 18px; font-weight: 600; color: var(--text-strong) }
+.pf-state__hint { margin: 8px auto 0; max-width: 46ch; font-size: 14.5px; line-height: 1.7; color: var(--text-muted) }
+.pf-state .pf-btn { margin-top: 20px }
+
+.pf-more { display: grid; justify-items: center; gap: 10px; margin-top: 30px }
+.pf-more__error { font-size: 14px; color: var(--text-danger) }
+
+/* ---------- /portfolio/:slug ---------- */
+
+.pf-back { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-brand) }
+.pf-back:hover { color: var(--text-strong) }
+
+.pf-detail-hero { padding-top: clamp(20px, 4vw, 40px) }
+.pf-detail-hero__cat { display: inline-block; margin-top: 26px; font-size: 14px; color: var(--text-brand) }
+.pf-detail-hero__cat:hover { color: var(--text-strong) }
+.pf-detail-hero__title {
+  margin-top: 10px;
+  font-size: clamp(32px, 5.6vw, 56px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.02em;
+  color: var(--text-strong);
+}
+[dir='rtl'] .pf-detail-hero__title { letter-spacing: 0; line-height: 1.22 }
+.pf-detail-hero__lead { margin-top: 16px; max-width: 60ch; font-size: clamp(16px, 2vw, 19px); line-height: 1.75; color: var(--text-muted) }
+
+/* The spec rail: what a buyer asks first, as a definition list. A cell with nothing in it is not
+   rendered at all, so a missing client or year leaves no empty label or stray separator behind.
+   The number of columns is fixed per width — two on a phone, three on a tablet, one row above —
+   rather than auto-fit, so a divider always sits between two cells of the same row and never at the
+   start of a row that wrapped. */
+.pf-spec {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 28px;
+  border-block: 1px solid var(--line-soft);
+}
+.pf-spec__cell { min-width: 0; padding-block: 14px; padding-inline: 0 18px }
+@media (min-width: 561px) and (max-width: 899.98px) {
+  .pf-spec { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .pf-spec__cell:not(:nth-child(3n+1)) { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 18px }
+  .pf-spec__cell:nth-child(n+4) { border-top: 1px solid var(--line-soft) }
+}
+@media (min-width: 900px) {
+  .pf-spec { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr) }
+  .pf-spec__cell + .pf-spec__cell { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 18px }
+}
+.pf-spec__label { font-size: 12.5px; color: var(--text-faint) }
+.pf-spec__value { margin-top: 5px; font-size: 15px; color: var(--text-strong); overflow-wrap: break-word }
+.pf-spec__link { display: inline-flex; align-items: center; gap: 6px; max-width: 100% }
+.pf-spec__link > span { min-width: 0 }
+.pf-spec__value a:hover { color: var(--text-brand) }
+.pf-spec__platforms { display: flex; flex-wrap: wrap; gap: 6px 14px }
+.pf-spec__platform { display: inline-flex; align-items: center; gap: 6px }
+@media (max-width: 560px) {
+  .pf-spec__cell { padding-block: 12px; padding-inline-end: 14px }
+  .pf-spec__cell:nth-child(even) { border-inline-start: 1px solid var(--line-soft); padding-inline-start: 14px }
+  .pf-spec__cell:nth-child(n+3) { border-top: 1px solid var(--line-soft) }
+  /* The demo address is the longest value and always the last fact: give it the whole row. */
+  .pf-spec__cell.pf-spec__cell--wide { grid-column: 1 / -1; border-inline-start: none; padding-inline-start: 0; border-top: 1px solid var(--line-soft) }
+}
+
+.pf-detail-cover { margin-top: clamp(28px, 4vw, 40px); border-radius: 24px; overflow: hidden; border: 1px solid var(--line-soft); aspect-ratio: 16 / 9 }
+
+.pf-section { margin-top: clamp(52px, 8vw, 88px) }
+.pf-section__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 12px; margin-bottom: 22px }
+.pf-section__title { font-size: clamp(22px, 3.2vw, 30px); font-weight: 700; line-height: 1.25; color: var(--text-strong) }
+.pf-section__count { font-family: 'Poppins', sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-faint) }
+
+.pf-prose { max-width: 68ch; font-size: 16.5px; line-height: 1.9; color: var(--text-body); white-space: pre-line }
+
+.pf-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 56px) }
+@media (min-width: 900px) { .pf-overview--aside { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) } }
+.pf-aside { display: grid; gap: 26px; align-content: start }
+.pf-aside__title { font-size: 14px; font-weight: 600; color: var(--text-strong); margin-bottom: 10px }
+.pf-aside__text { font-size: 14.5px; line-height: 1.75; color: var(--text-muted) }
+.pf-ticks { display: grid; gap: 10px; list-style: none }
+.pf-ticks li { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.6; color: var(--text-body) }
+
+/* Problem → solution. The trace between the two panels is the circuit line from the site's
+   backdrop: it runs along the reading direction on a wide screen and downwards on a phone. */
+.pf-ps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 }
+@media (min-width: 900px) { .pf-ps--both { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); align-items: stretch } }
+.pf-ps__panel { padding: clamp(22px, 3vw, 30px); border-radius: 20px; border: 1px solid var(--line-soft); background: var(--surface-1) }
+.pf-ps__panel--solution { border-color: var(--line-brand); background: linear-gradient(160deg, var(--surface-3), var(--surface-1) 70%) }
+.pf-ps__label { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--text-strong); margin-bottom: 12px }
+.pf-ps__text { font-size: 15.5px; line-height: 1.85; color: var(--text-body); white-space: pre-line }
+.pf-trace { position: relative; display: grid; place-items: center; height: 56px; color: var(--brand-300) }
+.pf-trace svg { width: 24px; height: 56px }
+@media (min-width: 900px) {
+  .pf-trace { height: auto }
+  .pf-trace svg { width: 72px; height: 24px }
+}
+.pf-trace__h { display: none }
+@media (min-width: 900px) {
+  .pf-trace__v { display: none }
+  .pf-trace__h { display: block }
+}
+[dir='rtl'] .pf-trace__h { transform: scaleX(-1) }
+
+/* Features: a module's name on one side, its features as rows on the other. */
+.pf-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px 40px; padding-block: 22px; border-top: 1px solid var(--line-soft) }
+.pf-group:last-child { border-bottom: 1px solid var(--line-soft) }
+@media (min-width: 900px) { .pf-group { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) } }
+.pf-group__name { font-size: 17px; font-weight: 650; color: var(--text-strong) }
+.pf-features { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; list-style: none }
+@media (min-width: 640px) { .pf-features { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.pf-feature { display: flex; gap: 12px }
+.pf-feature__name { font-size: 15px; font-weight: 600; color: var(--text-strong); line-height: 1.45 }
+.pf-feature__desc { margin-top: 4px; font-size: 14px; line-height: 1.7; color: var(--text-muted) }
+
+.pf-modules { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; list-style: none }
+@media (min-width: 640px) { .pf-modules { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+@media (min-width: 1024px) { .pf-modules { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+.pf-module { padding: 20px 22px; border-radius: 16px; border: 1px solid var(--line-soft); background: var(--surface-1) }
+.pf-module__name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 650; color: var(--text-strong) }
+.pf-module__desc { margin-top: 8px; font-size: 14px; line-height: 1.7; color: var(--text-muted) }
+
+.pf-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(36px, 5vw, 56px) }
+@media (min-width: 900px) { .pf-two--both { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.pf-quality { display: grid; gap: 18px; list-style: none }
+.pf-quality__title { font-size: 15px; font-weight: 600; color: var(--text-strong) }
+.pf-quality__desc { margin-top: 4px; font-size: 14px; line-height: 1.7; color: var(--text-muted) }
+
+.pf-stack { display: grid; list-style: none }
+.pf-stack__row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 28px; padding-block: 16px; border-top: 1px solid var(--line-soft) }
+.pf-stack__row:last-child { border-bottom: 1px solid var(--line-soft) }
+@media (min-width: 720px) { .pf-stack__row { grid-template-columns: 200px minmax(0, 1fr); align-items: baseline } }
+.pf-stack__row > dd { min-width: 0 }
+.pf-stack__cat { font-size: 14px; color: var(--text-faint) }
+
+/* ---------- gallery ---------- */
+
+.pf-switch { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; border: 1px solid var(--line-medium); background: var(--surface-sunken) }
+.pf-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .2s ease, color .2s ease;
+}
+.pf-switch button[aria-pressed='true'] { background: var(--surface-brand); color: var(--text-on-brand) }
+.pf-switch button:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px }
+
+.pf-shots { display: grid; gap: 14px; list-style: none; margin-top: 18px }
+.pf-shots--desktop { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) }
+.pf-shots--mobile { grid-template-columns: repeat(auto-fill, minmax(min(46%, 170px), 1fr)) }
+.pf-shot {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-1);
+  cursor: zoom-in;
+  text-align: start;
+}
+.pf-shots--desktop .pf-shot__frame { aspect-ratio: 16 / 10 }
+.pf-shots--mobile .pf-shot__frame { aspect-ratio: 9 / 19 }
+.pf-shot__frame { position: relative; overflow: hidden }
+.pf-shot__frame img { transition: transform .6s cubic-bezier(.22, .75, .25, 1) }
+.pf-shot:hover .pf-shot__frame img { transform: scale(1.035) }
+.pf-shot__caption { display: block; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: var(--text-muted) }
+
+/* The lightbox. Portalled to <body>, above the sticky navbar (z-50). */
+/* Bar, stage, caption in a column. The stage takes the height that is left (flex: 1 with
+   min-height: 0), so it is a definite box the picture can be fitted into. As a grid row it was
+   not: the stage's own implicit row was auto, max-height: 100% never resolved, and a phone shot
+   was drawn 2716px tall over the caption and the arrows. */
+.pf-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  animation: pfFadeIn .22s ease-out;
+}
+.pf-lightbox__bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(14px, 3vw, 28px) }
+.pf-lightbox__counter { font-family: 'Poppins', sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .75) }
+/* Side padding keeps clear of the arrows: they sit 8–24px in and are 46px wide, so 72px always clears. */
+.pf-lightbox__stage { position: relative; display: flex; flex: 1 1 auto; min-height: 0; padding-inline: clamp(72px, 7vw, 92px); touch-action: pan-y pinch-zoom }
+.pf-lightbox__frame { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0 }
+/* Centred in the frame and fitted to it, keeping its proportions. GalleryLightbox narrows the two
+   maxima further to the picture's own size, so a small screenshot is never stretched. */
+.pf-lightbox__img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8);
+  animation: pfFadeIn .25s ease-out;
+}
+.pf-lightbox__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .08);
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+.pf-lightbox__icon:hover { background: rgba(255, 255, 255, .18) }
+.pf-lightbox__icon:focus-visible { outline: 2px solid #E2D2F6; outline-offset: 2px }
+.pf-lightbox__nav { position: absolute; z-index: 1; top: 50%; transform: translateY(-50%) }
+.pf-lightbox__nav--prev { inset-inline-start: clamp(8px, 2vw, 24px) }
+.pf-lightbox__nav--next { inset-inline-end: clamp(8px, 2vw, 24px) }
+.pf-lightbox__caption { flex: none; padding: 14px clamp(16px, 4vw, 40px) 22px; text-align: center }
+.pf-lightbox__title { font-size: 15.5px; font-weight: 600 }
+.pf-lightbox__desc { margin: 4px auto 0; max-width: 70ch; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, .72) }
+/* On a phone the arrows move under the picture; the stage keeps that strip free for them. */
+@media (max-width: 560px) {
+  .pf-lightbox__stage { padding-inline: 8px; padding-bottom: 62px }
+  .pf-lightbox__nav { top: auto; bottom: 8px; transform: none }
+}
+@keyframes pfFadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* ---------- closing panels ---------- */
+
+.pf-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 28px;
+  padding: clamp(22px, 3.4vw, 32px);
+  border-radius: 20px;
+  border: 1px solid var(--line-brand);
+  background: linear-gradient(120deg, var(--surface-3), var(--surface-1));
+}
+.pf-band__title { font-size: clamp(19px, 2.6vw, 24px); font-weight: 700; color: var(--text-strong) }
+.pf-band__sub { margin-top: 6px; font-size: 14.5px; line-height: 1.7; color: var(--text-muted) }
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-btn,
+  .pf-feature-card__media,
+  .pf-card__cover-inner,
+  .pf-shot__frame img { transition: none }
+  .pf-btn--primary:hover { transform: none }
+  .pf-feature-card:hover .pf-feature-card__media,
+  .pf-card:hover .pf-card__cover-inner,
+  .pf-shot:hover .pf-shot__frame img { transform: none }
+  .pf-lightbox,
+  .pf-lightbox__img { animation: none }
+  .pf-strip__track { scroll-behavior: auto }
+}

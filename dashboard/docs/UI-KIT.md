@@ -20,7 +20,7 @@ import { applyServerErrors } from '@/lib/applyServerErrors'
 import { emptyToNull, intField, optionalUrl, requiredText } from '@/lib/validation'
 import { errorText } from '@/lib/errors'
 import { renderWithProviders, createWrapper } from '@/test/renderWithProviders'
-import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
+import { mockApi, paginated, reply, replyText, validationError } from '@/test/mockApi'
 ```
 
 Providers that already wrap every page (app and tests): react-query, language, toast, confirm, router, auth. Pages
@@ -225,16 +225,23 @@ Base URL = `import.meta.env.VITE_API_BASE_URL || '/api'` + `/admin`. Paths start
 | `api.upload(file, folder, options?)` | multipart `POST /uploads` → `{ path, url }` |
 | `api.deleteUpload(path)` | `DELETE /uploads {path}` |
 | `api.download(path, params?)` → `{ blob, filename, contentType }` + `saveBlob(blob, filename)` | authenticated file download (CSV export) |
+| `api.post(path, formData, { onUploadProgress })` | `onUploadProgress({ loaded, total })` sends through XMLHttpRequest (fetch reports no upload progress); same headers, answers and errors. Tests: `installFakeXhr()` from `@/test/fakeXhr` hands the request to `mockApi` |
 | `api.request(method, path, { params, body, signal, auth, headers })` | generic |
 
 All calls return the parsed JSON **exactly as Laravel sent it** (`{ data, meta, links }` / `{ data }` / `null`) and send
 `Authorization: Bearer <ngp_admin_token>`. `options`: `{ signal, auth: false, headers }` (`auth: false` = no token and a
 401 does not log out — login only).
 
-Failures throw `ApiError { status, message, errors, data, retryAfter }`: `status 0` = network down; `422` → `errors` is
-`{ field: [messages] }`; `429` → `retryAfter` seconds; **401 anywhere clears the token, empties the query cache and
-`<ProtectedRoute>` redirects to `/login`**. `errorText(err, c)` gives a localized message (server messages of 5xx/404
+Failures throw `ApiError { status, message, errors, data, retryAfter, code, method }`: `status 0` = network down; `422` →
+`errors` is `{ field: [messages] }`; `429` → `retryAfter` seconds; **401 anywhere clears the token, empties the query cache
+and `<ProtectedRoute>` redirects to `/login`**. `errorText(err, c)` gives a localized message (server messages of 5xx/404
 are never shown to users).
+
+A **2xx whose body is not JSON** (a PHP notice printed in front of it, a proxy page) rejects too, with
+`code: UNREADABLE_RESPONSE` and the 2xx `status` (`isUnreadableResponse(err)`), plus a console warning: no caller can use a
+missing body, and a rejection reaches every caller's existing error path. The server did act, so the crud mutations then
+refresh the resource and toast a warning ("may have been saved, check before trying again"), and the registry dialogs
+close instead of offering a second Save that would store a duplicate. An empty 2xx body still resolves `null`.
 
 ### `createCrudHooks(resource)` (`@/lib/crud`)
 
@@ -335,6 +342,41 @@ controls (`Switch`, `TagsInput`, `ImageUpload`, `GalleryUpload`, `Checkbox`, `Se
 
 `cx` (`@/lib/cx`), `focusRing` and `flipRtl` (`@/ui`), `buttonVariants`, `pageWindow`, `fieldErrorMessage`, `errorMessage`.
 
+### Project registry kit (`import { … } from '@/features/registry/kit'`)
+
+Built on the kit above for the registry screens (project page tabs, catalogs). A **field list** describes a form once —
+values, request body, client checks and controls all come from it (`kit/form.js`):
+
+```js
+const fields = [
+  { name: 'key', type: 'text', label: t.key, required: true, max: 80, pattern: KEY_PATTERN, patternMessage: r.keyFormat, dir: 'ltr' },
+  { name: 'name', type: 'bilingual', label: t.name, required: true, max: 255 },      // name_ar + name_en
+  { name: 'status', type: 'select', label: t.status, nullable: false, options: toOptions(FEATURE_STATUSES, r.featureStatuses) },
+  { name: 'evidence', type: 'lines', label: t.evidence, maxItems: 30, itemMax: 300 },  // one item per line
+  { name: 'tests.exist', type: 'switch', label: t.testsExist },                         // dotted = nested body
+]
+```
+
+Types: `text textarea url number date select boolSelect switch tags lines checkboxes bilingual objectList readonly section`.
+Blank optional values are sent as `null`; a `select` with `nullable: false` is left out when empty; `numeric: true` sends an id.
+`control: (props) => <Component {...props} />` draws a field with a component of its own while its `type` keeps the
+conversions and checks — the member picker (`projects/registry/AccountPicker.jsx`) is a `select` drawn as a
+search-as-you-type radio list over `GET registry/users?search=&per_page=20` (the API refuses `per_page` above 50).
+
+| Export | Use |
+|---|---|
+| `CollectionTab` | `resource` (e.g. `/registry/projects/7/modules`) `config={ title, itemLabel, fields (array or (ctx, record) => array), defaults, columns(helpers), rowName, rowActions?, filters?, search?, sort?, upload?, reorderable? }` `canWrite` `canCreate` `ctx` `onChanged` `notice` — table + add / edit / view dialog, delete after confirmation, partial updates, multipart uploads, a 422 on the fields |
+| `RecordDialog` | the same dialog alone (non-functional cards, screenshots) |
+| `GroupForm` | `projectId` `group` `values` `fields` `canWrite` `title` — one operations group, `PUT …/operations/{group}` with only the changed fields |
+| `localizeErrors(err, r)` / `actionErrorText(err, r, c)` | the vault guard's "looks like a secret" (and other known registry messages) in the UI language; text for a refused delete / inline change |
+| `AuthImage` / `useAuthorizedSrc(url)` | an `<img>` for a private stream (`/api/admin/registry/files/…`), fetched with the bearer token |
+| `registryProjects`, `useProjectAction(id)`, `useRefreshRegistry(id)`, `technologiesCatalog`, `industriesCatalog` | data hooks |
+| `registryStrings` + `enums.js` | labels and value lists of every registry enum (mirrors `App\Registry\Enums`) |
+
+The project page (`features/projects/ProjectPage.jsx`) shows the tabs `abilities` (from `GET /registry/projects/{id}`)
+let the caller read — the others are absent — and builds each registry tab from `projects/registry/collections.jsx` and
+`groups.js`.
+
 ## 5. RTL rules
 
 The app is Arabic-first: `<html dir="rtl">` unless the user toggled English; `LanguageContext` keeps `lang/dir` in sync.
@@ -344,7 +386,15 @@ The app is Arabic-first: `<html dir="rtl">` unless the user toggled English; `La
 * Directional icons (arrows, chevrons) must mirror: add `flipRtl` (`rtl:-scale-x-100`) to them. Symmetric icons do not.
 * Latin-only content (emails, URLs, slugs, phone numbers, code) → `dir="ltr"` (Input does it for email/url/tel/number).
   Passwords are typed in either script, so `PasswordInput` follows the page's own direction instead.
-  Bilingual content boxes: Arabic `dir="rtl"`, English `dir="ltr"` (BilingualField does it). Mixed user text in cells: `dir="auto"`.
+  Bilingual content boxes: Arabic `dir="rtl"`, English `dir="ltr"` (BilingualField does it). Mixed user text in cells: `dir="auto"`
+  or `<bdi>` (keeps the cell's alignment); free-text inputs and textareas of the registry forms are `dir="auto"`.
+* A Latin snippet that starts or ends with punctuation (`vault://`, `ngp-portfolio/`, `.zip`, `http://`) inside an Arabic
+  sentence loses its punctuation to the sentence (`//:vault`). In JSX wrap it in `<bdi dir="ltr">` (or fill a template
+  with `withLtr('… {0} …', [snippet])` from `@/lib/bidi`); in a plain string (strings.js, toasts, field errors) use
+  `ltr(snippet)`, the invisible isolate (LRI … PDI) that does the same. Field errors and toasts are isolated already,
+  so an English server message keeps its full stop on the right side.
+* Vault references are always shaped `vault://ngp/<slug>/<env>/<item>` (e.g. `vault://ngp/dawri/production/db`), in
+  examples, hints and placeholders alike.
 * Layout with flex/grid keeps DOM order and flips by itself — do not reverse arrays for RTL.
 * Numbers/dates: `useFormat()` (Latin digits). Do not build date strings by hand.
 * Keyboard: Tabs and menus already mirror the arrow keys; if you build something with left/right arrows, read `dir` from `useLanguage()`.
@@ -378,7 +428,7 @@ it('lists and deletes', async () => {
   `screen.getByTestId('location')` shows `pathname + search` (assert redirects). `authUser: null` renders anonymous.
 * `mockApi(routes)` replaces `fetch` (so the real `api` client, headers and error handling run). Handler gets
   `{ method, path, params, query, body, headers }`; return a value (200 JSON), `null` (204), `reply(status, body, headers)`,
-  `validationError({ field: ['msg'] })` (422) or a promise. Inspect with `server.calls(method?, path?)` / `server.requests`;
+  `validationError({ field: ['msg'] })` (422), `replyText(status, text)` (a raw, non-JSON body) or a promise. Inspect with `server.calls(method?, path?)` / `server.requests`;
   `server.on(key, handler)` swaps a handler mid-test. `paginated(rows, { page, perPage, total })` builds Laravel's envelope.
   Multipart bodies arrive as `FormData` (`call.body.get('folder')`).
 * Hooks: `renderHook(() => things.useList({}), { wrapper: createWrapper() })`.
@@ -402,8 +452,11 @@ it('lists and deletes', async () => {
 * `ImageUpload`/`GalleryUpload`: no upload progress percentage (fetch has none), gallery files upload one at a time, files
   uploaded and then abandoned before saving are **not** deleted (the backend cleans up replaced/removed images on
   update and everything on record deletion).
-* Forms have no "unsaved changes" navigation guard (BrowserRouter has no blocker API) — edit forms just disable Save
-  until dirty.
+* Unsaved changes: `<UnsavedChangesGuard when={dirty} message? />` (`@/ui`) asks before leaving the page through the
+  app (a confirm dialog, React Router's `useBlocker`) and lets the browser ask on a reload or a closed tab
+  (`beforeunload`). A change of the query alone (`?tab=`) is not blocked. It needs the data router: App uses
+  `createBrowserRouter` and `renderWithProviders` a memory data router. Used by the section-order cards and Page
+  content; other edit forms still just disable Save until dirty.
 * `useToast`/`useConfirm`/`useAuth` throw outside their providers (use `renderWithProviders`); `useLanguage` falls back to Arabic.
 * `useStrings` merges shallowly. Toasts: max 4 visible. Modals: focus trap is a simple Tab loop; nested modals are supported
   (topmost handles Esc).

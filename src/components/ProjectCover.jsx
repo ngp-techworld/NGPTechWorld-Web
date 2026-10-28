@@ -2,8 +2,11 @@ import { coverFor } from '../lib/visuals'
 import SmartImage from './fx/SmartImage'
 
 /** The cover strip on a project card or detail page: the uploaded image if there is one, otherwise
- *  a tinted panel carrying the mark. */
-export default function ProjectCover({ project, height = 190, statusLabel, rounded = false }) {
+ *  a tinted panel carrying the mark.
+ *
+ *  `height` may be a CSS length ('100%') for a cover sized by its container; `markHeight` then sets
+ *  the placeholder mark's size, which otherwise follows the numeric height as before. */
+export default function ProjectCover({ project, height = 190, statusLabel, rounded = false, markHeight, eager = false }) {
   const real = project.cover_image
 
   // The placeholder, also used as SmartImage's fallback so a broken upload degrades to the same
@@ -23,7 +26,7 @@ export default function ProjectCover({ project, height = 190, statusLabel, round
         width="436"
         height="476"
         className="relative w-auto opacity-40"
-        style={{ height: height > 250 ? 96 : 54 }}
+        style={{ height: markHeight ?? (height > 250 ? 96 : 54) }}
       />
     </div>
   )
@@ -36,7 +39,7 @@ export default function ProjectCover({ project, height = 190, statusLabel, round
       {/* Was a CSS background-image, which gives nothing to hang a load event on — the cover simply
           appeared whenever it appeared. As an <img> it can shimmer while it loads and fade in. */}
       {real
-        ? <SmartImage src={real} className="absolute inset-0" fallback={placeholder} />
+        ? <SmartImage src={real} className="absolute inset-0" fallback={placeholder} eager={eager} />
         : placeholder}
 
       {statusLabel && (

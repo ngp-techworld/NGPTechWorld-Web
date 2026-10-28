@@ -47,7 +47,7 @@ describe('ProjectCreate', () => {
     expect(field(/^Slug/)).toHaveAttribute('dir', 'ltr')
     expect(screen.getByText(/Leave blank to generate it from the English name/)).toBeInTheDocument()
     expect(field(/^Category/)).toHaveValue('')
-    expect(field(/^Status/)).toHaveValue('completed')
+    expect(field(/^Status/)).toHaveValue('in_progress') // a brand-new project is not finished yet
     expect(field(/^Year/)).toHaveValue(new Date().getFullYear())
     expect(screen.getByRole('switch', { name: /Featured project/ })).toHaveAttribute('aria-checked', 'false')
     expect(field('Project name (Arabic)')).toHaveAttribute('dir', 'rtl')
@@ -114,7 +114,7 @@ describe('ProjectCreate', () => {
     expect(server.requests).toHaveLength(0)
   })
 
-  it('"Save and continue" on the Team tab saves a valid form and lands on its Team tab', async () => {
+  it('"Save and continue" on the Team tab saves a valid form as a draft and opens the project page', async () => {
     const server = mockApi({ 'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }) })
     const { user } = renderWithProviders(<ProjectCreate />, { route: '/projects/new' })
     await fillGeneral(user)
@@ -123,7 +123,8 @@ describe('ProjectCreate', () => {
     await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
     await waitFor(() => expect(server.calls('POST', '/projects')).toHaveLength(1))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    expect(server.calls('POST', '/projects')[0].body.publication_status).toBe('draft')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
   })
 
   it('validates required fields locally, counts the errors on the tab and sends nothing', async () => {
@@ -132,12 +133,26 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    // category, client, 2 names, 2 short descriptions, 2 descriptions
-    expect(await screen.findAllByText('This field is required')).toHaveLength(8)
-    expect(field(/^Client/)).toHaveAttribute('aria-invalid', 'true')
-    tabName('General', '8 errors')
+    // category, 2 names, 2 short descriptions, 2 descriptions (client and year are optional since the registry)
+    expect(await screen.findAllByText('This field is required')).toHaveLength(7)
+    expect(field(/^Client/)).not.toHaveAttribute('aria-invalid')
+    tabName('General', '7 errors')
     tabName('Media', '')
     expect(server.requests).toHaveLength(0)
+  })
+
+  it('says the new project is a draft, and sends a blank client and year as null', async () => {
+    const server = mockApi({ 'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }) })
+    const { user } = renderWithProviders(<ProjectCreate />, { route: '/projects/new' })
+    expect(screen.getByText(/A new project is saved as a draft/)).toBeInTheDocument()
+
+    await fillGeneral(user)
+    await user.clear(field(/^Client/))
+    await user.clear(field(/^Year/))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(server.calls('POST', '/projects')).toHaveLength(1))
+    expect(server.calls('POST', '/projects')[0].body).toMatchObject({ client: null, year: null, publication_status: 'draft' })
   })
 
   it('checks the slug format and the year range', async () => {
@@ -154,7 +169,7 @@ describe('ProjectCreate', () => {
     expect(server.requests).toHaveLength(0)
   })
 
-  it('creates the project with the exact payload (paths only, integer year, null for blanks) and opens its Team tab', async () => {
+  it('creates the project as a draft with the exact payload (paths only, integer year, null for blanks) and opens its page', async () => {
     const server = mockApi({
       'POST /uploads': uploadHandler,
       'POST /projects': ({ body }) => reply(201, { data: showProject(9, body) }),
@@ -171,11 +186,12 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
     expect(server.calls('POST', '/projects')[0].body).toEqual({
+      publication_status: 'draft',
       slug: null,
       category: 'web',
-      status: 'completed',
+      status: 'in_progress',
       client: 'Acme',
       year: 2024,
       featured: true,
@@ -352,8 +368,8 @@ describe('ProjectCreate', () => {
 
     await user.click(screen.getByRole('button', { name: 'حفظ' }))
 
-    expect((await screen.findAllByText('هذا الحقل مطلوب')).length).toBe(8)
-    expect(screen.getByRole('tab', { name: /^عام/ })).toHaveAccessibleName(/^عام\s*8 أخطاء$/)
+    expect((await screen.findAllByText('هذا الحقل مطلوب')).length).toBe(7)
+    expect(screen.getByRole('tab', { name: /^عام/ })).toHaveAccessibleName(/^عام\s*7 أخطاء$/)
   })
 })
 
@@ -416,7 +432,7 @@ describe('ProjectEdit', () => {
     expect(screen.getAllByRole('button', { name: 'Drag to reorder' })).toHaveLength(3) // the three gallery tiles
     expect(field('Video link')).toHaveValue('https://youtu.be/abc123')
 
-    await user.click(tab('General'))
+    await user.click(tab('Overview'))
     await user.type(field(/^Client/), '!')
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
@@ -528,7 +544,7 @@ describe('ProjectEdit', () => {
     expect(await screen.findByText('The client field must not be greater than 255 characters.')).toBeInTheDocument()
     expect(field(/^Client/)).toHaveValue('Acme Ltd')
     expect(field(/^Client/)).toHaveFocus() // the open tab has the first error
-    tabName('General', '1 error')
+    tabName('Overview', '1 error')
     tabName('Media', '1 error')
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
@@ -563,16 +579,16 @@ describe('ProjectEdit', () => {
     expect(screen.queryByText('Could not load the data.')).not.toBeInTheDocument()
   })
 
-  it('warns about unsaved General / Media changes while another tab is open, and hides Save there', async () => {
+  it('warns about unsaved Overview / Media changes while another tab is open, and hides Save there', async () => {
     editServer()
     const { user } = renderWithProviders(<ProjectEdit />, { route, path })
     await user.type(await screen.findByLabelText(/^Client/), '!')
 
     await user.click(tab('Team'))
 
-    expect(screen.getByText(/You have unsaved changes in General or Media/)).toBeInTheDocument()
+    expect(screen.getByText(/You have unsaved changes in Overview or Media/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument() // hidden with the form
-    await user.click(tab('General'))
+    await user.click(tab('Overview'))
     expect(screen.queryByText(/You have unsaved changes/)).not.toBeInTheDocument()
     expect(field(/^Client/)).toHaveValue('Acme!') // still there
   })
@@ -615,5 +631,16 @@ describe('ProjectEdit', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'بوابة أكمي' })).toBeInTheDocument()
     expect(within(screen.getByRole('tablist')).getByRole('tab', { name: /^الفريق\s*2$/ })).toBeInTheDocument()
+  })
+})
+
+describe('ProjectCreate for an account that cannot create projects', () => {
+  it('says so instead of showing a form the API would refuse', () => {
+    mockApi({})
+    renderWithProviders(<ProjectCreate />, { route: '/projects/new', authUser: { id: 3, name: 'V', email: 'v@ngptechworld.com', is_super_admin: false, role: 'admin', permissions: [], registry_role: 'viewer' } })
+
+    expect(screen.getByRole('heading', { name: 'You cannot create a project' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/registry/projects')
   })
 })

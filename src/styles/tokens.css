@@ -12,3 +12,92 @@
 .view-enter{animation:fadeUp .4s ease}
 .card-lift{transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s,box-shadow .35s}
 .card-lift:hover{transform:translateY(-6px);border-color:rgba(150,120,190,.6)!important;box-shadow:var(--tw-shadow,0 24px 50px -24px rgba(107,78,142,.55))}
+
+/* ==========================================================================
+   Semantic tokens.
+
+   The variables above name colours ("accent-light"); these name jobs ("a raised surface", "body
+   text", "a hairline"). New components — the portfolio pages first — read only these, so a light
+   theme is one block of values away instead of a rewrite of every component.
+
+   The site is dark-only (spec D4): the dark values live on :root and nothing sets data-theme yet.
+   The light block below is the theme in waiting — keep it in step when adding a token.
+   ========================================================================== */
+:root {
+  /* Brand scale, darkest to lightest. */
+  --brand-950: #1A0F26;
+  --brand-900: #301D3D;
+  --brand-700: #4E3A6B;
+  --brand-500: #6B4E8E;
+  --brand-400: #8160A8;
+  --brand-300: #9678BE;
+  --brand-200: #C5B2E0;
+  --brand-100: #E2D2F6;
+
+  /* Surfaces, from the page up. */
+  --surface-page: #1A0F26;
+  --surface-1: rgba(255, 255, 255, .035);   /* cards, panels */
+  --surface-2: rgba(255, 255, 255, .06);    /* chips, raised controls */
+  --surface-3: rgba(150, 120, 190, .16);    /* selected, hover */
+  --surface-sunken: rgba(16, 9, 25, .55);   /* inputs, wells */
+  --surface-overlay: rgba(10, 6, 16, .94);  /* the lightbox */
+  --surface-brand: #6B4E8E;                 /* primary buttons */
+  --surface-brand-hover: #8160A8;
+
+  /* Text. */
+  --text-strong: #F3EEF8;
+  --text-body: #C9BCD9;
+  --text-muted: #B5A6C7;
+  --text-faint: #897A9E;
+  --text-brand: #C5B2E0;
+  --text-on-brand: #FFFFFF;
+  --text-danger: #F3B4B4;
+
+  /* Lines. */
+  --line-soft: rgba(255, 255, 255, .08);
+  --line-medium: rgba(255, 255, 255, .14);
+  --line-brand: rgba(150, 120, 190, .38);
+  --line-focus: #C5B2E0;
+
+  /* Effects. */
+  --brand-glow: rgba(150, 120, 190, .18);
+  --shadow-lift: 0 30px 60px -32px rgba(107, 78, 142, .75);
+  --scrim: linear-gradient(to top, rgba(26, 15, 38, .94) 0%, rgba(26, 15, 38, .55) 45%, transparent 80%);
+}
+
+[data-theme="light"] {
+  --brand-950: #1A0F26;
+  --brand-900: #301D3D;
+  --brand-700: #4E3A6B;
+  --brand-500: #6B4E8E;
+  --brand-400: #5A3E78;
+  --brand-300: #6B4E8E;
+  --brand-200: #4E3A6B;
+  --brand-100: #301D3D;
+
+  --surface-page: #FAF8FC;
+  --surface-1: #FFFFFF;
+  --surface-2: #F1ECF7;
+  --surface-3: rgba(107, 78, 142, .12);
+  --surface-sunken: #F4F0F8;
+  --surface-overlay: rgba(26, 15, 38, .92);
+  --surface-brand: #6B4E8E;
+  --surface-brand-hover: #5A3E78;
+
+  --text-strong: #1A0F26;
+  --text-body: #3A2A4D;
+  --text-muted: #5C4C70;
+  --text-faint: #7A6A8E;
+  --text-brand: #5A3E78;
+  --text-on-brand: #FFFFFF;
+  --text-danger: #A32B2B;
+
+  --line-soft: rgba(26, 15, 38, .09);
+  --line-medium: rgba(26, 15, 38, .16);
+  --line-brand: rgba(107, 78, 142, .4);
+  --line-focus: #6B4E8E;
+
+  --brand-glow: rgba(107, 78, 142, .12);
+  --shadow-lift: 0 24px 48px -28px rgba(48, 29, 61, .35);
+  --scrim: linear-gradient(to top, rgba(26, 15, 38, .88) 0%, rgba(26, 15, 38, .45) 45%, transparent 80%);
+}

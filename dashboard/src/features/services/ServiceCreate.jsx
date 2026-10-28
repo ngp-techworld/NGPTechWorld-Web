@@ -3,6 +3,7 @@ import { useStrings } from '@/i18n'
 import { PageHeader } from '@/ui'
 import { ServiceForm } from './ServiceForm'
 import { services } from './hooks'
+import { toPayload } from './schema'
 import strings from './strings'
 
 export default function ServiceCreate() {
@@ -11,7 +12,7 @@ export default function ServiceCreate() {
   const create = services.useCreate()
 
   const onSubmit = async (values) => {
-    await create.mutateAsync(values)
+    await create.mutateAsync(toPayload(values))
     navigate('/services')
   }
 

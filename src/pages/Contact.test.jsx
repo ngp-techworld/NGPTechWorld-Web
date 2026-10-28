@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import { SiteSettingsProvider, DEFAULT_SETTINGS } from '../lib/SiteSettings'
@@ -6,20 +7,29 @@ import { ui } from '../i18n/ui'
 import { api } from '../lib/api'
 import Contact from './Contact'
 
-vi.mock('../lib/api', () => ({ api: { postContact: vi.fn(), getSettings: vi.fn(), getServices: vi.fn() } }))
+vi.mock('../lib/api', () => ({ api: { postContact: vi.fn(), getSettings: vi.fn(), getServices: vi.fn(), getProject: vi.fn() } }))
 
 const t = ui.ar
 const settings = { ...DEFAULT_SETTINGS, email: 'hello@example.com', phone: '+1 555 0100' }
-const services = [{ id: 1, title_ar: 'تصميم مواقع', title_en: 'Web design' }]
+const services = [
+  { id: 1, slug: 'web-design', title_ar: 'تصميم مواقع', title_en: 'Web design' },
+  { id: 4, slug: 'mobile-apps', title_ar: 'تطبيقات الموبايل', title_en: 'Mobile Apps' },
+]
 
-const renderContact = () =>
+// The page reads ?service= off the URL, so it needs a router even for the tests that do not.
+const renderContact = (url = '/contact') =>
   render(
-    <LanguageProvider>
-      <SiteSettingsProvider>
-        <Contact />
-      </SiteSettingsProvider>
-    </LanguageProvider>,
+    <MemoryRouter initialEntries={[url]}>
+      <LanguageProvider>
+        <SiteSettingsProvider>
+          <Contact />
+        </SiteSettingsProvider>
+      </LanguageProvider>
+    </MemoryRouter>,
   )
+
+/** The label the service button shows — the placeholder until something is chosen. */
+const chosenService = () => screen.getByRole('button', { name: /تصميم مواقع|تطبيقات الموبايل|اختر الخدمة/ }).textContent
 
 async function selectService(label = 'تصميم مواقع') {
   fireEvent.click(screen.getByRole('button', { name: t.fService }))
@@ -43,6 +53,7 @@ beforeEach(() => {
   api.getSettings.mockReset().mockResolvedValue(settings)
   api.getServices.mockReset().mockResolvedValue(services)
   api.postContact.mockReset()
+  api.getProject.mockReset().mockRejectedValue(Object.assign(new Error('API 404'), { status: 404 }))
 })
 
 describe('sending the form', () => {
@@ -206,5 +217,127 @@ describe('service picker', () => {
     renderContact()
     expect(await screen.findByPlaceholderText(t.fName)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: t.fService })).toBeInTheDocument()
+  })
+})
+
+describe('a link that names a service', () => {
+  beforeEach(() => {
+    api.getSettings.mockResolvedValue(settings)
+    api.getServices.mockResolvedValue(services)
+  })
+
+  it('opens with that service chosen', async () => {
+    renderContact('/contact?service=mobile-apps')
+
+    await waitFor(() => expect(chosenService()).toContain('تطبيقات الموبايل'))
+  })
+
+  it('accepts the id too, for a service that has no slug yet', async () => {
+    renderContact('/contact?service=4')
+
+    await waitFor(() => expect(chosenService()).toContain('تطبيقات الموبايل'))
+  })
+
+  it('waits for the list instead of setting a value that is not there yet', async () => {
+    // The select is empty until the API answers; reading the URL on mount alone would choose
+    // nothing and then never try again.
+    let release
+    api.getServices.mockReturnValue(new Promise((resolve) => { release = resolve }))
+    renderContact('/contact?service=mobile-apps')
+
+    expect(chosenService()).toBe(t.fService)
+    await act(async () => { release(services) })
+    await waitFor(() => expect(chosenService()).toContain('تطبيقات الموبايل'))
+  })
+
+  it('ignores a name no service answers to, rather than showing an error', async () => {
+    renderContact('/contact?service=does-not-exist')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(chosenService()).toBe(t.fService)
+  })
+
+  it('leaves the form alone when the link names nothing', async () => {
+    renderContact('/contact')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(chosenService()).toBe(t.fService)
+  })
+
+  it('preselects without locking — the visitor can still change it', async () => {
+    renderContact('/contact?service=mobile-apps')
+    await waitFor(() => expect(chosenService()).toContain('تطبيقات الموبايل'))
+
+    await selectService('تصميم مواقع')
+    expect(chosenService()).toContain('تصميم مواقع')
+  })
+})
+
+describe('a link from a project page', () => {
+  const project = { slug: 'falcon-store', name_ar: 'متجر الصقر', name_en: 'Falcon Store' }
+
+  it('opens with the request title naming that project', async () => {
+    api.getProject.mockResolvedValue(project)
+    renderContact('/contact?project=falcon-store')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue(t.contactAboutProject('متجر الصقر')))
+    expect(api.getProject).toHaveBeenCalledWith('falcon-store')
+  })
+
+  it('names the project in the reading language', async () => {
+    localStorage.setItem('ngp.lang', 'en')
+    api.getProject.mockResolvedValue(project)
+    renderContact('/contact?project=falcon-store')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(ui.en.fTitle)).toHaveValue(ui.en.contactAboutProject('Falcon Store')))
+  })
+
+  it('never overwrites a title the visitor has already typed', async () => {
+    let release
+    api.getProject.mockReturnValue(new Promise((resolve) => { release = resolve }))
+    renderContact('/contact?project=falcon-store')
+
+    fireEvent.change(screen.getByPlaceholderText(t.fTitle), { target: { value: 'My own title' } })
+    await act(async () => { release(project) })
+
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('My own title')
+  })
+
+  it('ignores a project that cannot be found, rather than showing an error', async () => {
+    renderContact('/contact?project=does-not-exist')
+
+    await waitFor(() => expect(api.getProject).toHaveBeenCalled())
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('asks for no project when the link names none', async () => {
+    renderContact('/contact')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(api.getProject).not.toHaveBeenCalled()
+  })
+})
+
+describe('a project link that is not a slug', () => {
+  it('asks for nothing when ?project= is not a slug', async () => {
+    // A slug is lower-case words joined by hyphens; anything else ("../team/sara") is not a project.
+    renderContact('/contact?project=../team/sara-ahmad')
+
+    await waitFor(() => expect(api.getServices).toHaveBeenCalled())
+    expect(api.getProject).not.toHaveBeenCalled()
+    expect(screen.getByPlaceholderText(t.fTitle)).toHaveValue('')
+  })
+
+  it('keeps the prefilled title within the 150 characters the server accepts', async () => {
+    const long = 'م'.repeat(240)
+    api.getProject.mockResolvedValue({ slug: 'long-name', name_ar: long, name_en: 'Long' })
+    renderContact('/contact?project=long-name')
+
+    await waitFor(() => expect(screen.getByPlaceholderText(t.fTitle).value).not.toBe(''))
+    const title = screen.getByPlaceholderText(t.fTitle).value
+    expect(title.length).toBeLessThanOrEqual(150)
+    expect(title).toContain('…')
+    expect(title.startsWith(t.contactAboutProject('').split('«')[0])).toBe(true)
   })
 })

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCommon } from '@/i18n'
 import { useToast } from '@/ui/Toast'
-import { api } from './api'
+import { api, isUnreadableResponse } from './api'
 import { errorText } from './errors'
 
 const EMPTY = []
@@ -33,9 +33,20 @@ function useNotifier({ silent = false, successMessage } = {}, defaultKey = 'save
       if (!silent) toast.success(successMessage ?? c[defaultKey])
     },
     failure: (err) => {
-      if (!silent) toast.error(errorText(err, c))
+      if (silent) return
+      // a 2xx the client could not read: probably saved, so a warning rather than an error
+      if (isUnreadableResponse(err)) toast.warning(errorText(err, c))
+      else toast.error(errorText(err, c))
     },
   }
+}
+
+/**
+ * A write answered 2xx with a body that could not be read was most likely applied: refresh what the resource shows
+ * (lists and records) so the screen tells the truth, as a success would have.
+ */
+function refreshIfUnreadable(qc, keys, err) {
+  if (isUnreadableResponse(err)) qc.invalidateQueries({ queryKey: keys.all })
 }
 
 /**
@@ -100,6 +111,7 @@ export function createCrudHooks(resource) {
         return onSuccess?.(...args)
       },
       onError: (err, ...args) => {
+        refreshIfUnreadable(qc, keys, err)
         notify.failure(err)
         return onError?.(err, ...args)
       },
@@ -120,6 +132,7 @@ export function createCrudHooks(resource) {
         return onSuccess?.(record, variables, ...args)
       },
       onError: (err, ...args) => {
+        refreshIfUnreadable(qc, keys, err)
         notify.failure(err)
         return onError?.(err, ...args)
       },
@@ -140,6 +153,7 @@ export function createCrudHooks(resource) {
         return onSuccess?.(result, id, ...args)
       },
       onError: (err, ...args) => {
+        refreshIfUnreadable(qc, keys, err)
         notify.failure(err)
         return onError?.(err, ...args)
       },

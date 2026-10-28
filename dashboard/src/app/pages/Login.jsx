@@ -11,9 +11,13 @@ import { errorText } from '@/lib/errors'
 import { Alert, Button, Field, IconButton, Input } from '@/ui'
 import { useAuth } from '../AuthProvider'
 import { Brand } from '../layout/Brand'
+import { MfaStep } from './MfaStep'
 import strings from '../strings'
 
-/** Bilingual, branded sign-in page. POST /auth/login → token; 422 / 403 / 429 / network errors are shown in place. */
+/**
+ * Bilingual, branded sign-in page. POST /auth/login → token; 422 / 403 / 429 / network errors are shown in place. An
+ * account with two-step sign-in answers with a challenge instead: the code step (MfaStep) finishes the sign-in.
+ */
 export function LoginPage() {
   const c = useCommon()
   const t = useStrings(strings)
@@ -23,6 +27,7 @@ export function LoginPage() {
   const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [banner, setBanner] = useState('')
+  const [mfa, setMfa] = useState(null) // { challenge, expiresIn } while the code step is open
 
   const schema = z.object({
     email: z.string().trim().min(1, t.emailRequired).email(c.invalidEmail),
@@ -32,17 +37,26 @@ export function LoginPage() {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
 
   if (status === 'authenticated') return <Navigate to={location.state?.from?.pathname ?? '/'} replace />
 
+  const goOn = () => {
+    const from = location.state?.from
+    navigate(from ? `${from.pathname}${from.search ?? ''}` : '/', { replace: true })
+  }
+
   const onSubmit = handleSubmit(async ({ email, password }) => {
     setBanner('')
     try {
-      await login(email, password)
-      const from = location.state?.from
-      navigate(from ? `${from.pathname}${from.search ?? ''}` : '/', { replace: true })
+      const result = await login(email, password)
+      if (result?.mfaRequired) {
+        setMfa({ challenge: result.challenge, expiresIn: result.expiresIn })
+        return
+      }
+      goOn()
     } catch (err) {
       if (err instanceof ApiError && err.status === 422 && applyServerErrors(setError, err)) {
         // the email was well-formed (client check), so a server error on it means wrong credentials
@@ -67,30 +81,43 @@ export function LoginPage() {
       <main className="w-full max-w-md">
         <div className="rounded-panel border border-white/[.1] bg-surface/80 p-7 shadow-pop backdrop-blur-md sm:p-9">
           <Brand size={36} />
-          <h1 className="mt-7 text-2xl font-extrabold text-ink">{t.loginTitle}</h1>
-          <p className="mt-1.5 text-sm text-muted">{t.loginSubtitle}</p>
+          <h1 className="mt-7 text-2xl font-extrabold text-ink">{mfa ? t.mfaTitle : t.loginTitle}</h1>
+          {mfa ? null : <p className="mt-1.5 text-sm text-muted">{t.loginSubtitle}</p>}
 
-          <form onSubmit={onSubmit} noValidate className="mt-7 space-y-4">
-            {banner ? <Alert tone="danger">{banner}</Alert> : null}
+          {mfa ? (
+            <MfaStep
+              key={mfa.challenge}
+              challenge={mfa.challenge}
+              expiresIn={mfa.expiresIn}
+              onDone={goOn}
+              onStartOver={() => {
+                setMfa(null)
+                setValue('password', '')
+              }}
+            />
+          ) : (
+            <form onSubmit={onSubmit} noValidate className="mt-7 space-y-4">
+              {banner ? <Alert tone="danger">{banner}</Alert> : null}
 
-            <Field label={t.email} error={errors.email} required>
-              <Input type="email" autoComplete="username" autoFocus startIcon={Mail} {...register('email')} />
-            </Field>
+              <Field label={t.email} error={errors.email} required>
+                <Input type="email" autoComplete="username" autoFocus startIcon={Mail} {...register('email')} />
+              </Field>
 
-            <Field label={t.password} error={errors.password} required>
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                startIcon={Lock}
-                endAdornment={<IconButton icon={showPassword ? EyeOff : Eye} size="sm" label={showPassword ? t.hidePassword : t.showPassword} onClick={() => setShowPassword((value) => !value)} />}
-                {...register('password')}
-              />
-            </Field>
+              <Field label={t.password} error={errors.password} required>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  startIcon={Lock}
+                  endAdornment={<IconButton icon={showPassword ? EyeOff : Eye} size="sm" label={showPassword ? t.hidePassword : t.showPassword} onClick={() => setShowPassword((value) => !value)} />}
+                  {...register('password')}
+                />
+              </Field>
 
-            <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
-              {isSubmitting ? t.signingIn : t.signIn}
-            </Button>
-          </form>
+              <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+                {isSubmitting ? t.signingIn : t.signIn}
+              </Button>
+            </form>
+          )}
         </div>
         <p className="mt-5 text-center text-xs text-faint">{t.loginFooter}</p>
       </main>

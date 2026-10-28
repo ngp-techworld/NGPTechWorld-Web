@@ -51,6 +51,20 @@ describe('makeUserSchema', () => {
   })
 })
 
+describe('makeUserSchema with a registry role', () => {
+  const create = makeUserSchema(c, t)
+  const base = { name: 'Omar', email: 'omar@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: [] }
+
+  it('lets a limited admin with a registry role have no section at all', () => {
+    expect(create.safeParse({ ...base, registry_role: 'manager' }).success).toBe(true)
+    expect(create.safeParse({ ...base, registry_role: '' }).success).toBe(false)
+  })
+
+  it('refuses an unknown registry role', () => {
+    expect(create.safeParse({ ...base, permissions: ['requests'], registry_role: 'owner' }).success).toBe(false)
+  })
+})
+
 describe('toPayload / toFormValues', () => {
   it('sends the password on create and only a non-empty one on edit', () => {
     const values = { name: 'A', email: 'a@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: ['requests'] }
@@ -66,7 +80,15 @@ describe('toPayload / toFormValues', () => {
 
   it('never puts a password into the edit form', () => {
     expect(toFormValues({ id: 3, name: 'A', email: 'a@ngptechworld.com', role: 'admin', permissions: ['requests'], created_at: 'x' }))
-      .toEqual({ name: 'A', email: 'a@ngptechworld.com', password: '', role: 'admin', permissions: ['requests'] })
+      .toEqual({ name: 'A', email: 'a@ngptechworld.com', password: '', role: 'admin', permissions: ['requests'], registry_role: '' })
+    expect(toFormValues({ id: 3, name: 'A', email: 'a@ngptechworld.com', role: 'admin', permissions: [], registry_role: 'manager' }).registry_role).toBe('manager')
+  })
+
+  it('sends the registry role of a limited admin (empty = null) and never one for a super admin', () => {
+    const values = { name: 'A', email: 'a@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: [], registry_role: 'developer' }
+    expect(toPayload(values)).toEqual(values)
+    expect(toPayload({ ...values, registry_role: '' }).registry_role).toBeNull()
+    expect(toPayload({ ...values, role: 'super_admin' })).not.toHaveProperty('registry_role')
   })
 })
 

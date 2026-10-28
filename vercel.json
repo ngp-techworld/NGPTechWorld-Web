@@ -2,6 +2,11 @@
   "rewrites": [
     { "source": "/ngp-hq/:path*", "destination": "https://ngp-dashboard.vercel.app/ngp-hq/:path*" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/about", "destination": "/api/share?type=page&slug=about" },
+    { "source": "/services", "destination": "/api/share?type=page&slug=services" },
+    { "source": "/portfolio", "destination": "/api/share?type=page&slug=portfolio" },
+    { "source": "/contact", "destination": "/api/share?type=page&slug=contact" },
+    { "source": "/team", "destination": "/api/share?type=page&slug=team" },
     { "source": "/team/:slug", "destination": "/api/share?type=team&slug=:slug" },
     { "source": "/portfolio/:slug", "destination": "/api/share?type=project&slug=:slug" },
     { "source": "/(.*)", "destination": "/index.html" }

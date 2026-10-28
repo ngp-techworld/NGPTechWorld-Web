@@ -36,6 +36,17 @@ describe('buildNav / buildRoutes', () => {
   it('flattens every feature route', () => {
     expect(buildRoutes(list).map((route) => route.path ?? 'index')).toEqual(['index', 'faqs', 'faqs/new', 'users', 'hidden'])
   })
+
+  it('keeps a page offered by two features once (the first one wins)', () => {
+    const first = { path: 'projects/:id', element: 'first' }
+    const shared = [
+      { id: 'registry', routes: [{ path: 'registry' }, first] },
+      { id: 'projects', routes: [{ path: 'projects' }, { path: 'projects/:id', element: 'second' }] },
+    ]
+    const routes = buildRoutes(shared)
+    expect(routes.map((route) => route.path)).toEqual(['registry', 'projects/:id', 'projects'])
+    expect(routes[1]).toBe(first)
+  })
 })
 
 describe('the real features folder (import.meta.glob)', () => {
@@ -77,8 +88,16 @@ describe('the real features folder (import.meta.glob)', () => {
     expect(dashboard.routes.some((route) => route.index === true)).toBe(true)
   })
 
-  it('no two features claim the same route path', () => {
-    const paths = features.flatMap((feature) => feature.routes.map((route) => (route.index ? '(index)' : route.path)))
-    expect(new Set(paths).size).toBe(paths.length)
+  it('no two features claim the same route path, unless they offer the very same page', () => {
+    // the project page belongs to `projects` and to `registry` (a registry-only account has no `projects` section):
+    // a shared path is fine when every feature renders the same component there, anything else is a collision
+    const byPath = new Map()
+    for (const feature of features) {
+      for (const route of feature.routes) {
+        const key = route.index ? '(index)' : route.path
+        byPath.set(key, [...(byPath.get(key) ?? []), route.element?.type])
+      }
+    }
+    for (const [path, pages] of byPath) expect(new Set(pages).size, path).toBe(1)
   })
 })

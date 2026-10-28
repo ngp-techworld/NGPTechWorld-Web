@@ -5,7 +5,7 @@ import { errorText } from '@/lib/errors'
 import { Alert, Button, EmptyState, PageHeader, PageSpinner } from '@/ui'
 import { ServiceForm } from './ServiceForm'
 import { services } from './hooks'
-import { toFormValues } from './schema'
+import { toFormValues, toPayload } from './schema'
 import strings from './strings'
 
 export default function ServiceEdit() {
@@ -29,7 +29,7 @@ export default function ServiceEdit() {
   }
 
   const onSubmit = async (values) => {
-    await update.mutateAsync({ id: service.id, data: values })
+    await update.mutateAsync({ id: service.id, data: toPayload(values) })
     navigate('/services')
   }
 

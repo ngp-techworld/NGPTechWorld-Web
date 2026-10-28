@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useLang } from '../i18n/LanguageContext'
 import { useSiteSettings, SOCIAL_KEYS } from '../lib/SiteSettings'
@@ -14,6 +15,19 @@ const inputCls = 'w-full rounded-[11px] border border-white/[.14] px-4 py-3.5 te
 const inputStyle = { background: 'rgba(26,15,38,.6)' }
 const EMPTY_FORM = { service_id: '', name: '', phone: '', email: '', title: '', description: '' }
 const COOLDOWN_SECONDS = 60
+
+// The dashboard's own rule for a project slug (Admin\ProjectController).
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+// StoreContactRequest caps `title` at 150; a project name may be up to 255.
+const TITLE_MAX = 150
+
+/** "A project like «name»", with the name shortened (…) so the whole title fits what the server accepts. */
+function aboutProjectTitle(t, name) {
+  const full = t.contactAboutProject(name)
+  if (full.length <= TITLE_MAX) return full
+  const room = TITLE_MAX - t.contactAboutProject('').length - 1
+  return t.contactAboutProject(`${name.slice(0, Math.max(room, 0)).trimEnd()}…`)
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^[+\d][\d\s().-]*$/
@@ -45,6 +59,7 @@ function FieldError({ id, text }) {
 export default function Contact() {
   const { t, pick } = useLang()
   const settings = useSiteSettings()
+  const [searchParams] = useSearchParams()
   const [services, setServices] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -54,6 +69,46 @@ export default function Contact() {
   const [cooldown, setCooldown] = useState(0)
 
   useEffect(() => { api.getServices().then(setServices).catch(() => setServices([])) }, [])
+
+  // /contact?service=mobile-apps arrives with the service already chosen. These links go into
+  // adverts and messages, so the slug is what they carry; the id is accepted too because it is
+  // stable even when nobody has given the service a slug yet.
+  //
+  // It waits for the list rather than reading the URL once: the select has no options until the
+  // API answers, so applying it on mount would set a value that is not there yet. An unknown
+  // value is simply ignored — a mistyped link should open an ordinary contact form, not an error.
+  useEffect(() => {
+    const wanted = searchParams.get('service')
+    if (!wanted || services.length === 0) return
+    const match = services.find((s) => s.slug === wanted || String(s.id) === wanted)
+    // Never overwrite a choice already made — the list can arrive after the visitor has picked.
+    if (match) setForm((f) => (f.service_id ? f : { ...f, service_id: String(match.id) }))
+  }, [searchParams, services])
+
+  // /contact?project=falcon-store comes from "Discuss a similar project" on a project page: the
+  // request title opens already naming it. Same rules as ?service= — wait for the project to load,
+  // never overwrite a title the visitor has typed, and ignore a slug that leads nowhere.
+  // Only a real slug (the shape the dashboard enforces) is looked up: anything else, such as
+  // "../team/someone", could otherwise steer the request to a different endpoint.
+  const projectSlug = SLUG_RE.test(searchParams.get('project') ?? '') ? searchParams.get('project') : null
+  const [aboutProject, setAboutProject] = useState(null)
+  const prefilled = useRef(false)
+
+  useEffect(() => {
+    if (!projectSlug) return undefined
+    let live = true
+    api.getProject(projectSlug)
+      .then((p) => { if (live && p) setAboutProject(p) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [projectSlug])
+
+  useEffect(() => {
+    const name = aboutProject ? pick(aboutProject, 'name') : ''
+    if (!name || prefilled.current) return
+    prefilled.current = true
+    setForm((f) => (f.title.trim() ? f : { ...f, title: aboutProjectTitle(t, name) }))
+  }, [aboutProject, pick, t])
 
   // Ticks the post-send cooldown down to 0, one second at a time.
   useEffect(() => {

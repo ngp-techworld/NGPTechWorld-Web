@@ -39,6 +39,19 @@ export default {
     permissionsLabel: 'الأقسام المسموح بها',
     permissionsHint: 'اختر الأقسام التي يمكن لهذا المستخدم الوصول إليها وإدارتها.',
     permissionsRequired: 'اختر قسمًا واحدًا على الأقل',
+    permissionsHintWithRegistry: 'اختياري مع دور في سجل المشاريع: اختر الأقسام الإضافية التي يمكنه إدارتها.',
+
+    // project registry
+    registryRoleLabel: 'دوره في سجل المشاريع',
+    registryRoleNone: 'بلا وصول إلى السجل',
+    registryRoleNoneHint: 'لا يرى سجل المشاريع الداخلي. اختر دورًا ليطّلع على المشاريع وبياناتها الداخلية.',
+    registryRoles: { viewer: 'مُطّلع', developer: 'مطوّر', manager: 'مدير مشاريع' },
+    registryRoleHints: {
+      viewer: 'يطّلع على كل المشاريع وبياناتها الداخلية، ولا يعدّل شيئًا. يرى البيانات الحساسة للمشاريع التي هو عضو فيها فقط.',
+      developer: 'يطّلع على كل المشاريع، ويعدّل المحتوى والبيانات الداخلية والحساسة للمشاريع التي هو عضو فيها.',
+      manager: 'ينشئ المشاريع وينشرها ويؤرشفها، ويعدّل محتوى أي مشروع. يدير الأعضاء والبيانات الحساسة للمشاريع التي هو عضو فيها.',
+    },
+    registryRoleColumn: 'سجل المشاريع',
     sections: {
       faqs: 'الأسئلة الشائعة',
       'page-content': 'محتوى الصفحات',
@@ -91,6 +104,18 @@ export default {
     permissionsLabel: 'Allowed sections',
     permissionsHint: 'Choose the sections this user can access and manage.',
     permissionsRequired: 'Choose at least one section',
+    permissionsHintWithRegistry: 'Optional with a registry role: pick any extra sections they can manage.',
+
+    registryRoleLabel: 'Project registry role',
+    registryRoleNone: 'No registry access',
+    registryRoleNoneHint: 'They do not see the internal project registry. Pick a role to let them read the projects and their internal records.',
+    registryRoles: { viewer: 'Viewer', developer: 'Developer', manager: 'Manager' },
+    registryRoleHints: {
+      viewer: 'Reads every project and its internal records, changes nothing. Sees sensitive records only of the projects they are a member of.',
+      developer: 'Reads every project; edits the content, internal and sensitive records of the projects they are a member of.',
+      manager: 'Creates, publishes and archives projects and edits any project’s content. Manages members and sensitive records of the projects they are a member of.',
+    },
+    registryRoleColumn: 'Project registry',
     sections: {
       faqs: 'FAQ',
       'page-content': 'Page content',

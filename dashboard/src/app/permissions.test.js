@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { SECTIONS, canAccessFeature, filterFeaturesByUser } from './permissions'
+import { REGISTRY_ROLES, SECTIONS, canAccessFeature, canCreateProjects, filterFeaturesByUser } from './permissions'
 
 const feature = (id) => ({ id, routes: [] })
 const superAdmin = { is_super_admin: true, permissions: [] }
-const limited = (permissions = []) => ({ is_super_admin: false, permissions })
+const limited = (permissions = [], registry_role = null) => ({ is_super_admin: false, permissions, registry_role })
 
 describe('canAccessFeature', () => {
   it('denies everything when there is no signed-in user', () => {
@@ -47,5 +47,52 @@ describe('filterFeaturesByUser', () => {
     expect(filterFeaturesByUser(features, limited(['requests'])).map((f) => f.id)).toEqual(['requests', 'account'])
     expect(filterFeaturesByUser(features, superAdmin).map((f) => f.id)).toEqual(['dashboard', 'requests', 'services', 'users', 'account'])
     expect(filterFeaturesByUser(features, null)).toEqual([])
+  })
+})
+
+describe('registry features', () => {
+  it('shows the registry to super admins and to every registry role, never to a section-only admin', () => {
+    expect(canAccessFeature(feature('registry'), superAdmin)).toBe(true)
+    for (const role of REGISTRY_ROLES) expect(canAccessFeature(feature('registry'), limited([], role))).toBe(true)
+    expect(canAccessFeature(feature('registry'), limited(['projects', ...SECTIONS]))).toBe(false)
+    expect(canAccessFeature(feature('registry'), limited([]))).toBe(false)
+  })
+
+  it('shows the catalogs to super admins, every registry role and the projects section', () => {
+    expect(canAccessFeature(feature('catalogs'), superAdmin)).toBe(true)
+    expect(canAccessFeature(feature('catalogs'), limited([], 'viewer'))).toBe(true)
+    expect(canAccessFeature(feature('catalogs'), limited(['projects']))).toBe(true)
+    expect(canAccessFeature(feature('catalogs'), limited(['services', 'requests']))).toBe(false)
+  })
+
+  it('shows the imports to super admins and to every registry role, never to a section-only admin', () => {
+    expect(canAccessFeature(feature('imports'), superAdmin)).toBe(true)
+    for (const role of REGISTRY_ROLES) expect(canAccessFeature(feature('imports'), limited([], role))).toBe(true)
+    expect(canAccessFeature(feature('imports'), limited(['projects', ...SECTIONS]))).toBe(false)
+    expect(canAccessFeature(feature('imports'), limited(['imports']))).toBe(false)
+    expect(canAccessFeature(feature('imports'), null)).toBe(false)
+  })
+
+  it('keeps the audit log for super admins only, whatever the registry role or sections', () => {
+    expect(canAccessFeature(feature('audit-log'), superAdmin)).toBe(true)
+    expect(canAccessFeature(feature('audit-log'), limited(['audit-log', ...SECTIONS], 'manager'))).toBe(false)
+  })
+
+  it('keeps every section rule for registry users: a registry role grants no content section', () => {
+    const manager = limited([], 'manager')
+    expect(canAccessFeature(feature('projects'), manager)).toBe(false)
+    expect(canAccessFeature(feature('services'), manager)).toBe(false)
+    expect(canAccessFeature(feature('users'), manager)).toBe(false)
+    expect(canAccessFeature(feature('account'), manager)).toBe(true)
+    expect(canAccessFeature(feature('projects'), limited(['projects'], 'viewer'))).toBe(true)
+  })
+
+  it('lets super admins, the projects section and registry managers create projects (and edit the catalogs)', () => {
+    expect(canCreateProjects(superAdmin)).toBe(true)
+    expect(canCreateProjects(limited(['projects']))).toBe(true)
+    expect(canCreateProjects(limited([], 'manager'))).toBe(true)
+    expect(canCreateProjects(limited([], 'developer'))).toBe(false)
+    expect(canCreateProjects(limited([], 'viewer'))).toBe(false)
+    expect(canCreateProjects(null)).toBe(false)
   })
 })
