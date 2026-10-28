@@ -20,6 +20,9 @@ export default function SmartImage({
   objectPosition,
   fallback = null,
   eager = false,
+  // Responsive candidates (the screenshot variants). Optional: without them `src` is the only file.
+  srcSet,
+  sizes,
 }) {
   const imgRef = useRef(null)
   const [state, setState] = useState(src ? 'loading' : 'error')
@@ -40,6 +43,8 @@ export default function SmartImage({
         <img
           ref={imgRef}
           src={src}
+          srcSet={srcSet || undefined}
+          sizes={srcSet ? sizes : undefined}
           alt={alt}
           data-state={state}
           loading={eager ? 'eager' : 'lazy'}

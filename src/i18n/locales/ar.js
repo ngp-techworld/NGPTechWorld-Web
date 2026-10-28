@@ -1,4 +1,26 @@
 // Arabic — the site's primary language and the only right-to-left one.
+/**
+ * Arabic counted nouns: one and two have their own forms, 3–10 take the plural, 11–99 the singular
+ * in the accusative, and round hundreds the singular in the genitive. Decided on the last two
+ * digits, as the grammar does.
+ */
+function countAr(n, forms) {
+  const r = n % 100
+  if (n === 0) return forms.zero
+  if (n === 1) return forms.one
+  if (n === 2) return forms.two
+  if (r >= 3 && r <= 10) return `${n} ${forms.few}`
+  if (r >= 11 && r <= 99) return `${n} ${forms.many}`
+  return `${n} ${forms.other}`
+}
+const PROJECTS_AR = { zero: 'لا مشاريع', one: 'مشروع واحد', two: 'مشروعان', few: 'مشاريع', many: 'مشروعاً', other: 'مشروع' }
+const PROJECTS_PUBLISHED_AR = {
+  zero: 'لا مشاريع منشورة', one: 'مشروع واحد منشور', two: 'مشروعان منشوران',
+  few: 'مشاريع منشورة', many: 'مشروعاً منشوراً', other: 'مشروع منشور',
+}
+// After «في», so the dual is in the genitive.
+const FIELDS_AR = { zero: 'أي مجال', one: 'مجال واحد', two: 'مجالين', few: 'مجالات', many: 'مجالاً', other: 'مجال' }
+
 export default {
   navHome: 'الرئيسية',
   navServices: 'الخدمات',
@@ -227,4 +249,76 @@ export default {
     { q: 'كيف تتم عملية الدفع؟', a: 'نعتمد نظام دفعات مرتبطة بمراحل المشروع، بحيث تدفع مقابل ما يُنجَز وفق اتفاق واضح مسبقاً.' },
     { q: 'هل يمكنكم تطوير مشروع قائم بالفعل؟', a: 'بالتأكيد، نراجع الكود والبنية الحالية ونضع خطة للتطوير أو إعادة الهيكلة حسب حالتك.' },
   ],
+  // صفحتا معرض الأعمال (/portfolio و /portfolio/:slug).
+  pfIndex: (projects, fields) => `${countAr(projects, PROJECTS_PUBLISHED_AR)} في ${countAr(fields, FIELDS_AR)}`,
+  pfFeatured: 'أعمال مميّزة',
+  pfAllProjects: 'كل المشاريع',
+  pfSearch: 'ابحث في المشاريع',
+  pfSearchHint: 'الاسم أو القطاع أو التقنية',
+  pfCategory: 'التصنيف',
+  pfIndustry: 'القطاع',
+  pfTechnology: 'التقنية',
+  pfPlatform: 'المنصّة',
+  pfStatus: 'الحالة',
+  pfAllIndustries: 'كل القطاعات',
+  pfAllTechnologies: 'كل التقنيات',
+  pfAllPlatforms: 'كل المنصّات',
+  pfAllStatuses: 'كل الحالات',
+  pfClear: 'مسح عوامل التصفية',
+  pfResults: (n) => countAr(n, PROJECTS_AR),
+  pfLoadMore: 'عرض مزيد من المشاريع',
+  pfLoadingMore: 'جارٍ تحميل مزيد من المشاريع…',
+  pfEmpty: 'لا يوجد مشروع يطابق هذه الخيارات.',
+  pfEmptyHint: 'جرّب كلمة أخرى، أو امسح عوامل التصفية لعرض كل المشاريع.',
+  pfNone: 'ستُعرض مشاريعنا المنشورة هنا قريباً.',
+  pfRetry: 'إعادة المحاولة',
+  pfDetails: 'عرض التفاصيل',
+  pfDemo: 'العرض التجريبي',
+  pfNewTab: 'يُفتح في تبويب جديد',
+  pfPrev: 'السابق',
+  pfNext: 'التالي',
+  platformLabels: {
+    web: 'الويب', android: 'أندرويد', ios: 'iOS', windows: 'ويندوز', macos: 'macOS', linux: 'لينكس',
+    api: 'واجهة برمجية (API)', cli: 'سطر الأوامر', other: 'أخرى',
+  },
+  devStatus: {
+    idea: 'فكرة', planning: 'قيد التخطيط', in_development: 'قيد التطوير', testing: 'قيد الاختبار',
+    completed: 'مكتمل', maintenance: 'قيد الصيانة', paused: 'متوقف مؤقتاً', archived: 'مؤرشف',
+  },
+  techCategories: {
+    frontend: 'الواجهة الأمامية', backend: 'الواجهة الخلفية', language: 'لغات البرمجة', database: 'قواعد البيانات', orm: 'ORM',
+    authentication: 'المصادقة', authorization: 'الصلاحيات', api: 'الواجهات البرمجية', integration: 'التكاملات',
+    storage: 'التخزين', cloud: 'السحابة', containerization: 'الحاويات', ci_cd: 'التكامل والنشر المستمر', monitoring: 'المراقبة',
+    testing: 'الاختبار', mobile: 'تطبيقات الجوّال', tooling: 'أدوات التطوير', other: 'أخرى',
+  },
+  pfNotFound: 'المشروع غير موجود',
+  pfNotFoundHint: 'ربما تغيّر اسمه أو أُزيل من الموقع. تجد القائمة الكاملة في معرض الأعمال.',
+  pfPlatforms: 'المنصّات',
+  pfClient: 'العميل',
+  pfYear: 'السنة',
+  pfAtAGlance: 'أبرز ما يقدّمه',
+  pfAudience: 'لمن صُمّم',
+  pfCustomers: 'العملاء المستهدفون',
+  pfUsers: 'المستخدمون',
+  pfProblem: 'المشكلة',
+  pfSolution: 'الحل الذي قدّمناه',
+  pfFeatures: 'أبرز الميزات',
+  pfFeaturesOther: 'ميزات عامة',
+  pfModules: 'الوحدات الوظيفية',
+  pfTechHighlights: 'جوانب هندسية بارزة',
+  pfQuality: 'الجودة والموثوقية',
+  pfStack: 'التقنيات المستخدمة',
+  pfDesktop: 'سطح المكتب',
+  pfMobile: 'الجوّال',
+  pfScreenSize: 'حجم الشاشة',
+  pfOpenShot: (n) => `فتح لقطة الشاشة ${n}`,
+  pfCounter: (i, n) => `${i} من ${n}`,
+  pfDemoTitle: 'شاهده وهو يعمل',
+  pfDemoSub: 'يُفتح العرض التجريبي في تبويب جديد لتجرّبه بنفسك.',
+  pfDemoBtn: 'افتح العرض التجريبي',
+  pfRelated: 'مشاريع ذات صلة',
+  pfContactTitle: 'تخطّط لمشروع مشابه؟',
+  pfContactSub: 'أخبرنا بما تحتاجه وسنعود إليك.',
+  pfContactBtn: 'ناقش معنا مشروعاً مشابهاً',
+  contactAboutProject: (name) => `مشروع مشابه لـ«${name}»`,
 }

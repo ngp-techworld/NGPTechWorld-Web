@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useLang } from '../i18n/LanguageContext'
 import { useSections } from '../lib/SiteSettings'
@@ -9,7 +9,21 @@ const linkClass = 'text-soft hover:text-white transition-colors text-[15px] curs
 export default function Navbar() {
   const { t } = useLang()
   const [open, setOpen] = useState(false)
+  const burgerRef = useRef(null)
   const shown = useSections()
+
+  // Escape closes the open mobile menu and hands focus back to the button that opened it, as the
+  // dashboard's sidebar does. Listened for only while the menu is open.
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      burgerRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
   const links = [
     ['/', t.navHome], ['/services', t.navServices, 'services'], ['/portfolio', t.navPortfolio, 'portfolio'],
     ['/team', t.navTeam, 'team'], ['/offers', t.navOffers, 'offers'], ['/library', t.navLibrary, 'library'], ['/about', t.navAbout, 'about'], ['/contact', t.navContact],
@@ -31,6 +45,7 @@ export default function Navbar() {
             {t.navCta}
           </Link>
           <button
+            ref={burgerRef}
             data-burger
             aria-label="Menu"
             aria-expanded={open}

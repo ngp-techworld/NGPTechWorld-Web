@@ -1,5 +1,13 @@
 // Russian. Poppins carries no Cyrillic glyphs, so index.css swaps the display face for this
 // locale; see the html[lang="ru"] rule there before changing anything about the typography.
+/** one / few / many — the three Russian plural forms after a number. */
+function pluralRu(n, [one, few, many]) {
+  const m10 = n % 10, m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
+}
+
 export default {
   navHome: 'Главная',
   navServices: 'Услуги',
@@ -228,4 +236,76 @@ export default {
     { q: 'Как устроена оплата?', a: 'Мы работаем по оплате за этапы: вы платите за сданную работу согласно заранее оговорённым условиям.' },
     { q: 'Можете ли вы взять уже существующий проект?', a: 'Конечно — мы изучаем ваш код и архитектуру и планируем улучшения или рефакторинг под вашу ситуацию.' },
   ],
+  // Страницы портфолио (/portfolio и /portfolio/:slug).
+  pfIndex: (projects, fields) => `${projects} ${pluralRu(projects, ['опубликованный проект', 'опубликованных проекта', 'опубликованных проектов'])} в ${fields} ${pluralRu(fields, ['направлении', 'направлениях', 'направлениях'])}`,
+  pfFeatured: 'Избранные работы',
+  pfAllProjects: 'Все проекты',
+  pfSearch: 'Поиск проектов',
+  pfSearchHint: 'Название, отрасль или технология',
+  pfCategory: 'Категория',
+  pfIndustry: 'Отрасль',
+  pfTechnology: 'Технология',
+  pfPlatform: 'Платформа',
+  pfStatus: 'Статус',
+  pfAllIndustries: 'Все отрасли',
+  pfAllTechnologies: 'Все технологии',
+  pfAllPlatforms: 'Все платформы',
+  pfAllStatuses: 'Любой статус',
+  pfClear: 'Сбросить фильтры',
+  pfResults: (n) => `${n} ${pluralRu(n, ['проект', 'проекта', 'проектов'])}`,
+  pfLoadMore: 'Показать ещё проекты',
+  pfLoadingMore: 'Загружаем ещё проекты…',
+  pfEmpty: 'Нет проектов, подходящих под эти фильтры.',
+  pfEmptyHint: 'Попробуйте другое слово или сбросьте фильтры, чтобы увидеть все проекты.',
+  pfNone: 'Скоро здесь появятся наши опубликованные проекты.',
+  pfRetry: 'Повторить',
+  pfDetails: 'Подробнее',
+  pfDemo: 'Демо-версия',
+  pfNewTab: 'откроется в новой вкладке',
+  pfPrev: 'Назад',
+  pfNext: 'Далее',
+  platformLabels: {
+    web: 'Веб', android: 'Android', ios: 'iOS', windows: 'Windows', macos: 'macOS', linux: 'Linux',
+    api: 'API', cli: 'Командная строка', other: 'Другое',
+  },
+  devStatus: {
+    idea: 'Идея', planning: 'Планирование', in_development: 'В разработке', testing: 'Тестирование',
+    completed: 'Завершён', maintenance: 'На поддержке', paused: 'Приостановлен', archived: 'В архиве',
+  },
+  techCategories: {
+    frontend: 'Фронтенд', backend: 'Бэкенд', language: 'Языки', database: 'Базы данных', orm: 'ORM',
+    authentication: 'Аутентификация', authorization: 'Авторизация', api: 'API', integration: 'Интеграции',
+    storage: 'Хранилище', cloud: 'Облако', containerization: 'Контейнеры', ci_cd: 'CI/CD', monitoring: 'Мониторинг',
+    testing: 'Тестирование', mobile: 'Мобильная разработка', tooling: 'Инструменты', other: 'Другое',
+  },
+  pfNotFound: 'Проект не найден',
+  pfNotFoundHint: 'Возможно, его переименовали или сняли с публикации. Полный список — в портфолио.',
+  pfPlatforms: 'Платформы',
+  pfClient: 'Клиент',
+  pfYear: 'Год',
+  pfAtAGlance: 'Коротко',
+  pfAudience: 'Для кого',
+  pfCustomers: 'Клиенты',
+  pfUsers: 'Пользователи',
+  pfProblem: 'Задача',
+  pfSolution: 'Наше решение',
+  pfFeatures: 'Ключевые возможности',
+  pfFeaturesOther: 'Общие',
+  pfModules: 'Функциональные модули',
+  pfTechHighlights: 'Технические особенности',
+  pfQuality: 'Качество и надёжность',
+  pfStack: 'Технологический стек',
+  pfDesktop: 'Компьютер',
+  pfMobile: 'Телефон',
+  pfScreenSize: 'Размер экрана',
+  pfOpenShot: (n) => `Открыть снимок экрана ${n}`,
+  pfCounter: (i, n) => `${i} из ${n}`,
+  pfDemoTitle: 'Посмотрите в работе',
+  pfDemoSub: 'Демо откроется в новой вкладке — попробуйте сами.',
+  pfDemoBtn: 'Открыть демо',
+  pfRelated: 'Похожие проекты',
+  pfContactTitle: 'Задумали что-то похожее?',
+  pfContactSub: 'Расскажите, что вам нужно, и мы свяжемся с вами.',
+  pfContactBtn: 'Обсудить похожий проект',
+  contactAboutProject: (name) => `Проект, похожий на «${name}»`,
 }
