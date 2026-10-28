@@ -16,7 +16,7 @@ describe('projects feature', () => {
   it('registers itself as the Projects menu entry with the three routes', () => {
     expect(feature.id).toBe('projects')
     expect(feature.nav).toMatchObject({ order: 30, group: 'content', to: '/projects', label: { ar: 'المشاريع', en: 'Projects' } })
-    expect(feature.routes.map((route) => route.path)).toEqual(['projects', 'projects/new', 'projects/:id'])
+    expect(feature.routes.map((route) => route.path)).toEqual(['projects', 'projects/new', 'projects/:id', 'projects/:id/profile'])
   })
 
   it('walks the whole flow: list → new → save → Team tab of the saved project → add a member → back to the list', async () => {
@@ -53,9 +53,11 @@ describe('projects feature', () => {
     await enter(user, screen.getByLabelText('Full description (English)'), 'Long')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    // saved → the edit page of the new project, on its Team tab
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/projects/9?tab=team'))
+    // saved as a draft → the project page (its Overview), then its Team tab
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/projects\/9$/))
+    expect(server.calls('POST', '/projects')[0].body.publication_status).toBe('draft')
     expect(await screen.findByRole('heading', { level: 1, name: 'Core' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /^Team/ }))
     expect(screen.getByRole('tab', { name: /^Team/ })).toHaveAttribute('aria-selected', 'true')
     expect(await screen.findByText('No team members yet')).toBeInTheDocument()
 

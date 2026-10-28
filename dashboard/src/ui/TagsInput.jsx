@@ -76,7 +76,7 @@ export function TagsInput({ value = [], onChange, placeholder, max, maxLength = 
     >
       {value.map((tag) => (
         <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-lg bg-accent/25 py-1 ps-2.5 pe-1 text-[13px] text-accent-lighter">
-          <span className="break-words">{tag}</span>
+          <bdi className="break-words">{tag}</bdi>
           <button
             type="button"
             disabled={disabled}
@@ -103,6 +103,7 @@ export function TagsInput({ value = [], onChange, placeholder, max, maxLength = 
         placeholder={atMax ? c.tagsMax(max) : (placeholder ?? c.tagsPlaceholder)}
         aria-invalid={isInvalid || undefined}
         aria-describedby={field?.describedBy}
+        dir={dir ? undefined : 'auto'}
         className="min-w-[8rem] flex-1 bg-transparent px-1 py-0.5 text-sm text-ink placeholder:text-faint focus:outline-none"
         {...rest}
       />

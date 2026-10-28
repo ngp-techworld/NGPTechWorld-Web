@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -158,5 +158,50 @@ describe('DataTable', () => {
   it('supports a function rowKey and a caption for screen readers', () => {
     renderWithProviders(<DataTable columns={columns} rows={rows} rowKey={(row) => `k-${row.id}`} caption="People" />)
     expect(screen.getByRole('table', { name: 'People' })).toBeInTheDocument()
+  })
+
+  describe('horizontal scroll cue', () => {
+    // jsdom has no layout: give the scroller the sizes a phone would
+    const sized = (scroller, { scrollWidth, clientWidth, scrollLeft }) => {
+      Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: scrollWidth })
+      Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: clientWidth })
+      scroller.scrollLeft = scrollLeft
+      fireEvent.scroll(scroller)
+    }
+    const edge = (container, side) => container.querySelector(`[data-edge="${side}"]`)
+
+    it('fades in a shadow on each side that has more columns past it', () => {
+      const { container } = renderWithProviders(<DataTable columns={columns} rows={rows} />)
+      const scroller = screen.getByRole('table').parentElement
+      expect(edge(container, 'start')).not.toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).not.toHaveAttribute('data-visible') // fits: no cue
+
+      sized(scroller, { scrollWidth: 900, clientWidth: 390, scrollLeft: 0 })
+      expect(edge(container, 'start')).not.toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).toHaveAttribute('aria-hidden', 'true')
+
+      sized(scroller, { scrollWidth: 900, clientWidth: 390, scrollLeft: 200 })
+      expect(edge(container, 'start')).toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).toHaveAttribute('data-visible')
+
+      sized(scroller, { scrollWidth: 900, clientWidth: 390, scrollLeft: 510 })
+      expect(edge(container, 'start')).toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).not.toHaveAttribute('data-visible')
+    })
+
+    it('mirrors in RTL, where scrollLeft runs from 0 to negative values', () => {
+      const { container } = renderWithProviders(<DataTable columns={columns} rows={rows} />, { lang: 'ar' })
+      const scroller = screen.getByRole('table').parentElement
+      expect(edge(container, 'start')).toHaveClass('start-0', 'bg-gradient-to-r', 'rtl:bg-gradient-to-l')
+
+      sized(scroller, { scrollWidth: 900, clientWidth: 390, scrollLeft: 0 })
+      expect(edge(container, 'start')).not.toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).toHaveAttribute('data-visible')
+
+      sized(scroller, { scrollWidth: 900, clientWidth: 390, scrollLeft: -510 })
+      expect(edge(container, 'start')).toHaveAttribute('data-visible')
+      expect(edge(container, 'end')).not.toHaveAttribute('data-visible')
+    })
   })
 })

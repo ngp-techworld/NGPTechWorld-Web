@@ -1,5 +1,7 @@
 // Feature strings: { ar: {…}, en: {…} } read with `const t = useStrings(strings)`. Generic words (save, cancel,
 // delete, "Active"…) come from `useCommon()` — only what is specific to this feature is here.
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     title: 'فريقنا',
@@ -93,7 +95,7 @@ export default {
     discard: 'تجاهل التغييرات',
 
     slug: 'الرابط (Slug)',
-    slugHint: 'يظهر في رابط الصفحة: /team/الرابط. اتركه فارغًا لتوليده تلقائيًا من الاسم الإنجليزي.',
+    slugHint: `يظهر في رابط الصفحة: ${ltr('/team/')}الرابط. اتركه فارغًا لتوليده تلقائيًا من الاسم الإنجليزي.`,
     activeLabel: 'فعّال',
     activeHint: 'الأعضاء غير الفعّالين لا يظهرون في صفحة «فريقنا» ولا صفحاتهم الشخصية على الموقع.',
 

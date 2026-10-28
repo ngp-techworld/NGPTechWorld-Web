@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useCommon } from '@/i18n'
 import { cx } from '@/lib/cx'
@@ -7,20 +8,52 @@ import { IconButton } from './IconButton'
 import { Skeleton } from './Spinner'
 import { focusRing } from './styles'
 
-const hideBelow = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }
+const hideBelow = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell', '2xl': 'hidden 2xl:table-cell' }
 const alignCls = { start: 'text-start', center: 'text-center', end: 'text-end' }
+
+/**
+ * Which ends of a horizontal scroller have more content past them: `{ start, end }` in reading order. In RTL the
+ * browser counts scrollLeft from 0 at the start towards negative values, so the distance is its absolute value.
+ */
+export function useScrollEdges(ref) {
+  const [edges, setEdges] = useState({ start: false, end: false })
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth
+      const pos = Math.abs(el.scrollLeft)
+      const next = { start: max > 1 && pos > 1, end: max > 1 && pos < max - 1 }
+      setEdges((prev) => (prev.start === next.start && prev.end === next.end ? prev : next))
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    // the table grows when rows arrive, the scroller when the window changes
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(el)
+    if (el.firstElementChild) observer?.observe(el.firstElementChild)
+    return () => {
+      el.removeEventListener('scroll', update)
+      observer?.disconnect()
+    }
+  }, [ref])
+  return edges
+}
+
+const edgeFade = 'pointer-events-none absolute inset-y-0 z-10 w-8 from-deep/90 to-transparent transition-opacity duration-200'
 
 /**
  * Data grid for list pages. Data and state live in the parent (server-side paging / sorting).
  *
- * columns = [{ key, header, cell?(row, index), sortable?, sortKey?, align?: 'start|center|end', width?, hideBelow?: 'sm|md|lg|xl', className? }]
+ * columns = [{ key, header, cell?(row, index), sortable?, sortKey?, align?: 'start|center|end', width?, hideBelow?: 'sm|md|lg|xl|2xl', className? }]
  *   - `cell` defaults to row[key]; `sortKey` is the API column (defaults to `key`).
  * sort = { key: 'created_at', dir: 'desc' } (matches the API `sort` / `dir` params), onSortChange({ key, dir }):
  *   clicking a header sorts ascending first, then toggles.
  * selectable + selected (array of row keys) + onSelectedChange(keys): checkbox column (select-all covers the rows on screen).
  * rowActions(row) → [{ key?, label, icon, onClick?, to?, tone?: 'danger', disabled?, hidden? }] rendered as icon buttons.
  * loading = first load (skeleton rows); busy = refetching with rows on screen (dimmed).
- * minWidth (default 560): below this width the table scrolls horizontally instead of squeezing the columns.
+ * minWidth (default 560): below this width the table scrolls horizontally instead of squeezing the columns; a soft
+ *   shadow then fades in on each side that has more columns past it (mirrored in RTL).
  * emptyState / emptyTitle / emptyDescription customise the "no rows" message.
  */
 export function DataTable({
@@ -47,6 +80,8 @@ export function DataTable({
   className,
 }) {
   const c = useCommon()
+  const scroller = useRef(null)
+  const edges = useScrollEdges(scroller)
   const keyOf = (row) => (typeof rowKey === 'function' ? rowKey(row) : row[rowKey])
   const selectedSet = new Set(selected)
   const allSelected = rows.length > 0 && rows.every((row) => selectedSet.has(keyOf(row)))
@@ -68,9 +103,12 @@ export function DataTable({
   const showEmpty = !loading && rows.length === 0
 
   return (
-    <div className={cx('overflow-hidden rounded-card border border-white/[.08] bg-white/[.025] shadow-card', className)}>
+    <div className={cx('relative overflow-hidden rounded-card border border-white/[.08] bg-white/[.025] shadow-card', className)}>
+      {/* more columns past an edge: a shadow on that side (the start fades towards the end, mirrored in RTL) */}
+      <div aria-hidden="true" data-edge="start" data-visible={edges.start || undefined} className={cx(edgeFade, 'start-0 bg-gradient-to-r rtl:bg-gradient-to-l', edges.start ? 'opacity-100' : 'opacity-0')} />
+      <div aria-hidden="true" data-edge="end" data-visible={edges.end || undefined} className={cx(edgeFade, 'end-0 bg-gradient-to-l rtl:bg-gradient-to-r', edges.end ? 'opacity-100' : 'opacity-0')} />
       {/* `relative`: the sr-only caption / header text are absolutely positioned and would otherwise escape this scroller (and widen the page in RTL) */}
-      <div className="relative overflow-x-auto">
+      <div ref={scroller} className="relative overflow-x-auto">
         <table style={{ minWidth }} className={cx('w-full border-collapse text-sm transition-opacity', busy && 'opacity-60')} aria-busy={loading || busy || undefined}>
           {caption ? <caption className="sr-only">{caption}</caption> : null}
           <thead>

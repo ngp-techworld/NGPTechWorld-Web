@@ -67,7 +67,7 @@ describe('AccountPage — profile', () => {
     await user.click(save())
 
     expect(await screen.findByText('This field is required')).toBeInTheDocument()
-    expect(screen.getByText('Enter a valid email address', { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByText('Enter a valid email address', { selector: 'p > bdi' })).toBeInTheDocument()
     expect(server.requests).toHaveLength(0)
   })
 

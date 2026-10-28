@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { mockApi, paginated, reply } from '@/test/mockApi'
+import { mockApi, paginated, reply, validationError } from '@/test/mockApi'
 import { renderWithProviders } from '@/test/renderWithProviders'
 import './testTimeouts'
 import { makeProject } from './testUtils'
@@ -159,6 +159,36 @@ describe('ProjectList', () => {
     expect(screen.getByRole('columnheader', { name: 'Team' })).not.toHaveAttribute('aria-sort')
   })
 
+  it('shows the public cover (`cover_url`) of an imported project, whose pictures are screenshots', async () => {
+    mockApi({
+      'GET /projects': () =>
+        paginated([
+          makeProject(1, { cover_image_url: null, cover_url: 'http://localhost/media/projects/screenshots/9-480.webp' }),
+          makeProject(2, { cover_image_url: 'http://localhost/media/projects/two.jpg', cover_url: 'http://localhost/media/projects/two.jpg' }),
+          makeProject(3, { cover_image_url: null }), // an API without cover_url yet, and no cover at all: the letter
+        ]),
+    })
+    renderWithProviders(<ProjectList />, { route: '/projects' })
+    await screen.findByText('Project 1')
+
+    expect(rowOf('Project 1').querySelector('img')).toHaveAttribute('src', 'http://localhost/media/projects/screenshots/9-480.webp')
+    expect(rowOf('Project 2').querySelector('img')).toHaveAttribute('src', 'http://localhost/media/projects/two.jpg')
+    expect(rowOf('Project 3').querySelector('img')).toBeNull()
+  })
+
+  it('keeps the counts for very wide screens, so the actions stay in view at 1440 in English', async () => {
+    listServer()
+    renderWithProviders(<ProjectList />, { route: '/projects' })
+    await screen.findByText('Project 1')
+
+    for (const name of ['Client', 'Team', 'Links']) expect(screen.getByRole('columnheader', { name: new RegExp(`^${name}`) })).toHaveClass('hidden', '2xl:table-cell')
+    // below 2xl the client is the second line of the project cell instead
+    const clients = within(rowOf('Project 1')).getAllByText('Client 1')
+    expect(clients).toHaveLength(2)
+    expect(clients.map((node) => node.closest('td').className.includes('2xl:table-cell') || node.closest('span').className.includes('2xl:hidden'))).toEqual([true, true])
+    expect(within(rowOf('Project 1')).getByRole('link', { name: 'Edit' })).toBeInTheDocument()
+  })
+
   it('paginates', async () => {
     const server = mockApi({ 'GET /projects': ({ query }) => paginated(projects, { page: Number(query.page), perPage: 3, total: 9 }) })
     const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
@@ -229,37 +259,63 @@ describe('ProjectList', () => {
   })
 
   describe('delete', () => {
-    it('asks first (warning about team, links and images), then deletes and refreshes the list', async () => {
-      const server = listServer({ 'DELETE /projects/:id': () => null })
+    it('asks for the typed slug, then deletes with it and refreshes the lists', async () => {
+      const server = listServer({ 'DELETE /registry/projects/:id': () => null })
       const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
       await screen.findByText('Project 2')
 
       await user.click(within(rowOf('Project 2')).getByRole('button', { name: 'Delete' }))
 
-      const dialog = screen.getByRole('dialog', { name: 'Delete project' })
-      expect(dialog).toHaveTextContent('Delete the project “Project 2”?')
-      expect(dialog).toHaveTextContent('team members, links and all of its images')
-      expect(server.calls('DELETE')).toHaveLength(0)
+      const dialog = within(screen.getByRole('dialog', { name: 'Delete the project' }))
+      expect(screen.getByRole('dialog')).toHaveTextContent('The project “Project 2”, its team, links and images and every registry record')
+      const confirm = dialog.getByRole('button', { name: 'Delete' })
+      expect(confirm).toBeDisabled()
+      await user.type(dialog.getByLabelText('Type the slug “project-2” to confirm'), 'project-2')
+      await user.click(confirm)
 
-      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
-
-      await waitFor(() => expect(server.calls('DELETE', '/projects/2')).toHaveLength(1))
-      expect(await screen.findByText('Deleted')).toBeInTheDocument()
+      await waitFor(() => expect(server.calls('DELETE', '/registry/projects/2')).toHaveLength(1))
+      expect(server.calls('DELETE', '/registry/projects/2')[0].body).toEqual({ confirm_slug: 'project-2' })
+      expect(await screen.findByText('Project deleted')).toBeInTheDocument()
       await waitFor(() => expect(server.calls('GET', '/projects').length).toBeGreaterThan(1))
     })
 
+    it('uses the original endpoint, with the slug, on a backend without the registry', async () => {
+      const server = listServer({ 'DELETE /projects/:id': () => null })
+      const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
+      await screen.findByText('Project 2')
+
+      await user.click(within(rowOf('Project 2')).getByRole('button', { name: 'Delete' }))
+      await user.type(screen.getByLabelText('Type the slug “project-2” to confirm'), 'project-2')
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(server.calls('DELETE', '/projects/2')).toHaveLength(1))
+      expect(server.calls('DELETE', '/projects/2')[0].body).toEqual({ confirm_slug: 'project-2' })
+    })
+
+    it('shows a wrong slug the API refuses on the field', async () => {
+      listServer({ 'DELETE /registry/projects/:id': () => validationError({ confirm_slug: ["Type the project's slug to confirm the deletion."] }) })
+      const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
+      await screen.findByText('Project 2')
+
+      await user.click(within(rowOf('Project 2')).getByRole('button', { name: 'Delete' }))
+      await user.type(screen.getByLabelText('Type the slug “project-2” to confirm'), 'project-2')
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+      expect(await screen.findByText('The slug does not match.')).toBeInTheDocument()
+    })
+
     it('warns in Arabic too', async () => {
-      listServer({ 'DELETE /projects/:id': () => null })
+      listServer()
       const { user } = renderWithProviders(<ProjectList />, { route: '/projects', lang: 'ar' })
       await screen.findByText('مشروع 2')
 
       await user.click(within(rowOf('مشروع 2')).getByRole('button', { name: 'حذف' }))
 
-      expect(screen.getByRole('dialog', { name: 'حذف المشروع' })).toHaveTextContent('سيتم أيضًا حذف فريقه وروابطه وجميع صوره')
+      expect(screen.getByRole('dialog', { name: 'حذف المشروع نهائيًا' })).toHaveTextContent('وفريقه وروابطه وصوره')
     })
 
     it('does nothing when the dialog is cancelled', async () => {
-      const server = listServer({ 'DELETE /projects/:id': () => null })
+      const server = listServer()
       const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
       await screen.findByText('Project 2')
 
@@ -268,6 +324,47 @@ describe('ProjectList', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(server.calls('DELETE')).toHaveLength(0)
+    })
+
+    it('offers no delete to anyone but a super admin', async () => {
+      listServer()
+      renderWithProviders(<ProjectList />, { route: '/projects', authUser: { id: 4, name: 'Ed', email: 'ed@ngptechworld.com', is_super_admin: false, role: 'admin', permissions: ['projects'] } })
+      await screen.findByText('Project 2')
+      expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('registry columns', () => {
+    const registryRows = [
+      makeProject(1, { development_status: 'maintenance', publication_status: 'published' }),
+      makeProject(2, { development_status: 'testing', publication_status: 'draft', archived_at: '2026-10-20T10:00:00.000000Z' }),
+    ]
+
+    it('shows the development status, the publication and the archived badge', async () => {
+      mockApi({ 'GET /projects': () => paginated(registryRows) })
+      renderWithProviders(<ProjectList />, { route: '/projects' })
+
+      const first = within((await screen.findByText('Project 1')).closest('tr'))
+      expect(first.getByText('Maintenance')).toBeInTheDocument()
+      expect(first.getByText('Published')).toBeInTheDocument()
+      const second = within(rowOf('Project 2'))
+      expect(second.getByText('Testing')).toBeInTheDocument()
+      expect(second.getByText('Draft')).toBeInTheDocument()
+      expect(second.getByText('Archived')).toBeInTheDocument()
+    })
+
+    it('never offers featuring an archived project, and explains a refusal', async () => {
+      const server = mockApi({
+        'GET /projects': () => paginated(registryRows),
+        'PUT /projects/:id': () => validationError({ featured: ['An archived project cannot be featured.'] }),
+      })
+      const { user } = renderWithProviders(<ProjectList />, { route: '/projects' })
+      await screen.findByText('Project 2')
+
+      expect(screen.getByRole('switch', { name: 'Featured: Project 2' })).toBeDisabled()
+      await user.click(screen.getByRole('switch', { name: 'Featured: Project 1' }))
+      expect(await screen.findByText('An archived project cannot be featured.')).toBeInTheDocument()
+      expect(server.calls('PUT', '/projects/2')).toHaveLength(0)
     })
   })
 

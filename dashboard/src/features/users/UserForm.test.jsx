@@ -65,7 +65,7 @@ describe('UserCreate', () => {
     await user.type(password(), 'short')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('Enter a valid email address', { selector: 'p' })).toBeInTheDocument()
+    expect(await screen.findByText('Enter a valid email address', { selector: 'p > bdi' })).toBeInTheDocument()
     expect(screen.getByText('At least 8 characters')).toBeInTheDocument()
     expect(byLabel('Email')).toHaveAttribute('aria-invalid', 'true')
     expect(server.requests).toHaveLength(0)
@@ -136,7 +136,7 @@ describe('UserCreate', () => {
     await user.type(byLabel('البريد الإلكتروني'), 'not-an-email')
     await user.click(screen.getByRole('button', { name: 'حفظ' }))
 
-    expect(await screen.findByText('بريد إلكتروني غير صالح', { selector: 'p' })).toBeInTheDocument()
+    expect(await screen.findByText('بريد إلكتروني غير صالح', { selector: 'p > bdi' })).toBeInTheDocument()
     expect(screen.getAllByText('هذا الحقل مطلوب')).toHaveLength(2)
   })
 
@@ -184,7 +184,7 @@ describe('UserCreate', () => {
 
       await waitFor(() => expect(server.calls('POST', '/users')).toHaveLength(1))
       expect(server.calls('POST', '/users')[0].body).toEqual({
-        name: 'Requests Admin', email: 'ops@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: ['projects'],
+        name: 'Requests Admin', email: 'ops@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: ['projects'], registry_role: null,
       })
     })
   })
@@ -271,7 +271,7 @@ describe('UserEdit', () => {
 
     await waitFor(() => expect(server.calls('PUT', '/users/2')).toHaveLength(1))
     expect(server.calls('PUT', '/users/2')[0].body).toEqual({
-      name: 'Layla Hassan', email: 'layla@ngptechworld.com', role: 'admin', permissions: ['testimonials'],
+      name: 'Layla Hassan', email: 'layla@ngptechworld.com', role: 'admin', permissions: ['testimonials'], registry_role: null,
     })
   })
 
@@ -352,5 +352,76 @@ describe('UserEdit', () => {
     server.on('GET /users/:id', () => ({ data: layla }))
     await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await findByLabel('Name')).toBeInTheDocument()
+  })
+})
+
+describe('registry role', () => {
+  const registrySelect = () => screen.getByLabelText('Project registry role')
+
+  it('offers none / viewer / developer / manager for a limited admin and hides it for a super admin', async () => {
+    const { user } = renderWithProviders(<UserCreate />, { route: '/users/new' })
+
+    expect(registrySelect()).toHaveValue('')
+    expect([...registrySelect().options].map((option) => option.textContent)).toEqual(['No registry access', 'Viewer', 'Developer', 'Manager'])
+    await user.selectOptions(roleSelect(), 'super_admin')
+    expect(screen.queryByLabelText('Project registry role')).not.toBeInTheDocument()
+  })
+
+  it('creates a registry manager without any content section', async () => {
+    const server = mockApi({ 'POST /users': ({ body }) => reply(201, { data: { id: 9, ...body } }) })
+    const { user } = renderWithProviders(<UserCreate />, { route: '/users/new' })
+
+    await user.type(byLabel('Name'), 'Project Manager')
+    await user.type(byLabel('Email'), 'pm@ngptechworld.com')
+    await user.type(password(), 'secret-pass-1')
+    await user.selectOptions(registrySelect(), 'manager')
+    expect(registrySelect()).toHaveAccessibleDescription(/Creates, publishes and archives projects/)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(server.calls('POST', '/users')).toHaveLength(1))
+    expect(server.calls('POST', '/users')[0].body).toEqual({
+      name: 'Project Manager', email: 'pm@ngptechworld.com', password: 'secret-pass-1', role: 'admin', permissions: [], registry_role: 'manager',
+    })
+  })
+
+  it('still asks for a section when there is no registry role', async () => {
+    const server = mockApi({})
+    const { user } = renderWithProviders(<UserCreate />, { route: '/users/new' })
+
+    await user.type(byLabel('Name'), 'Nobody')
+    await user.type(byLabel('Email'), 'nobody@ngptechworld.com')
+    await user.type(password(), 'secret-pass-1')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Choose at least one section')).toBeInTheDocument()
+    expect(registrySelect()).toHaveAccessibleDescription(/Pick a role to let them read the projects/)
+    expect(server.requests).toHaveLength(0)
+  })
+
+  it('loads the stored role on edit and clears it with null', async () => {
+    const server = mockApi({
+      'GET /users/:id': () => ({ data: { ...layla, role: 'admin', is_super_admin: false, permissions: ['requests'], registry_role: 'developer' } }),
+      'PUT /users/:id': ({ body }) => ({ data: { ...layla, ...body } }),
+    })
+    const { user } = renderWithProviders(<UserEdit />, { route: '/users/2', path: '/users/:id' })
+
+    expect(await screen.findByLabelText('Project registry role')).toHaveValue('developer')
+    await user.selectOptions(registrySelect(), '')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(server.calls('PUT', '/users/2')).toHaveLength(1))
+    expect(server.calls('PUT', '/users/2')[0].body).toMatchObject({ role: 'admin', permissions: ['requests'], registry_role: null })
+  })
+
+  it('never sends a registry role for a super admin', async () => {
+    const server = mockApi({ 'POST /users': ({ body }) => reply(201, { data: { id: 9, ...body } }) })
+    const { user } = renderWithProviders(<UserCreate />, { route: '/users/new' })
+
+    await user.selectOptions(screen.getByLabelText('Project registry role'), 'viewer')
+    await fillCreate(user)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(server.calls('POST', '/users')).toHaveLength(1))
+    expect(server.calls('POST', '/users')[0].body).not.toHaveProperty('registry_role')
   })
 })

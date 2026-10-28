@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Controller, get, useForm } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { get, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams } from 'react-router-dom'
 import { FileText, Images, Link2, Lock, Save, Users } from 'lucide-react'
 import { useCommon, useFormat, useStrings } from '@/i18n'
 import { applyServerErrors } from '@/lib/applyServerErrors'
-import { Alert, BilingualField, Button, Card, EmptyState, Field, FormActions, GalleryUpload, ImageUpload, Input, Select, Switch, TabPanel, Tabs, fieldErrorMessage } from '@/ui'
+import { Alert, Button, Card, EmptyState, FormActions, TabPanel, Tabs } from '@/ui'
+import { GeneralFields, MediaFields } from './ProjectFields'
 import { LinksTab } from './LinksTab'
 import { TeamTab } from './TeamTab'
-import { CATEGORIES, GALLERY_MAX, STATUSES, TAB_FIELDS, changedPayload, emptyProject, makeProjectSchema, toFormValues, toPayload } from './schema'
+import { TAB_FIELDS, changedPayload, emptyProject, makeProjectSchema, toFormValues, toPayload } from './schema'
 import strings from './strings'
 
 const FORM_ID = 'project-form'
@@ -37,29 +38,6 @@ function useActiveTab() {
     [setSearchParams],
   )
   return [tab, setTab]
-}
-
-/** Label + hint + error around a control that is not a single form element (the gallery). */
-function LabeledGroup({ label, hint, error, children }) {
-  const id = useId()
-  return (
-    <div role="group" aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined} className="min-w-0">
-      <p id={`${id}-label`} className="mb-1.5 text-[13px] font-semibold text-soft">
-        {label}
-      </p>
-      {children}
-      {error ? (
-        <p role="alert" className="mt-1.5 text-xs font-medium text-danger">
-          {error}
-        </p>
-      ) : null}
-      {hint ? (
-        <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  )
 }
 
 /** What the Team / Links tabs show on the create page: nothing can be attached to a project that does not exist yet. */
@@ -91,7 +69,7 @@ function SaveFirst({ description, busy, saving }) {
  * promise resolves with the saved record, the form is re-based on it (an explicit reset after a save — never on a
  * background refetch, so what the user is typing is not replaced).
  */
-export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit, saving = false, isEdit = false }) {
+export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit, saving = false, isEdit = false, listTo = '/projects' }) {
   const c = useCommon()
   const t = useStrings(strings)
   const f = useFormat()
@@ -103,15 +81,14 @@ export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit,
   const pendingFocus = useRef(null)
   const uploading = coverBusy || galleryBusy
 
+  const form = useForm({ resolver: zodResolver(schema), defaultValues })
   const {
-    register,
-    control,
     handleSubmit,
     setError,
     setFocus,
     reset,
     formState: { errors, isDirty },
-  } = useForm({ resolver: zodResolver(schema), defaultValues })
+  } = form
 
   // Failed submit (client or server): if the open tab has no error, jump to the tab of the first one and focus it.
   const reveal = (names) => {
@@ -160,9 +137,6 @@ export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit,
   ]
   const isFormTab = tab === 'general' || tab === 'media'
 
-  const categoryOptions = CATEGORIES.map((value) => ({ value, label: t.categories[value] }))
-  const statusOptions = STATUSES.map((value) => ({ value, label: t.projectStatuses[value] }))
-
   return (
     <div className="space-y-5">
       <Tabs idPrefix={PREFIX} tabs={tabs} value={tab} onChange={setTab} label={t.tabsLabel} />
@@ -170,70 +144,14 @@ export function ProjectForm({ project, defaultValues = emptyProject(), onSubmit,
       {/* the form covers only General + Media: Team and Links (below) are saved live, so no Save button there */}
       <form id={FORM_ID} onSubmit={submit} noValidate hidden={!isFormTab} className="space-y-5">
         <TabPanel idPrefix={PREFIX} value="general" active={tab} keepMounted className="space-y-5">
-          <Card title={t.basicInfo}>
-            <div className="space-y-6">
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field label={t.slug} hint={isEdit ? t.slugHintEdit : t.slugHintCreate} error={errors.slug} className="md:col-span-2">
-                  <Input {...register('slug')} dir="ltr" placeholder="acme-portal" autoComplete="off" autoCapitalize="none" spellCheck={false} />
-                </Field>
-                <Field label={t.category} required error={errors.category}>
-                  <Select {...register('category')} placeholder={t.categoryPlaceholder} options={categoryOptions} />
-                </Field>
-                <Field label={c.status} required error={errors.status}>
-                  <Select {...register('status')} options={statusOptions} />
-                </Field>
-                <Field label={t.client} required error={errors.client}>
-                  <Input {...register('client')} dir="auto" />
-                </Field>
-                <Field label={t.year} required error={errors.year}>
-                  <Input type="number" inputMode="numeric" min={1990} max={2100} {...register('year')} />
-                </Field>
-              </div>
-              <Controller
-                name="featured"
-                control={control}
-                render={({ field }) => <Switch checked={field.value} onChange={field.onChange} label={t.featured} description={t.featuredHint} />}
-              />
-            </div>
-          </Card>
-          <Card>
-            <div className="space-y-6">
-              <BilingualField name="name" label={t.name} register={register} errors={errors} required maxLength={255} />
-              <BilingualField name="short" label={t.short} hint={t.shortHint} register={register} errors={errors} required maxLength={255} />
-              <BilingualField name="description" label={t.descriptionField} register={register} errors={errors} required multiline rows={8} maxLength={10000} />
-            </div>
-          </Card>
+          <GeneralFields form={form} isEdit={isEdit} />
         </TabPanel>
 
         <TabPanel idPrefix={PREFIX} value="media" active={tab} keepMounted>
-          <Card>
-            <div className="space-y-8">
-              <Controller
-                name="cover_image"
-                control={control}
-                render={({ field }) => (
-                  <Field label={t.cover} hint={t.coverHint} error={errors.cover_image}>
-                    <ImageUpload folder="projects" value={field.value} url={project?.cover_image_url} onChange={field.onChange} onUploadingChange={setCoverBusy} />
-                  </Field>
-                )}
-              />
-              <Controller
-                name="gallery"
-                control={control}
-                render={({ field }) => (
-                  <LabeledGroup label={t.gallery} hint={t.galleryHint} error={fieldErrorMessage(errors.gallery)}>
-                    <GalleryUpload folder="projects/gallery" max={GALLERY_MAX} value={field.value} onChange={field.onChange} onUploadingChange={setGalleryBusy} invalid={Boolean(errors.gallery)} />
-                  </LabeledGroup>
-                )}
-              />
-              <Field label={t.video} hint={t.videoHint} error={errors.video_url}>
-                <Input type="url" {...register('video_url')} placeholder={t.videoPlaceholder} autoComplete="off" />
-              </Field>
-            </div>
-          </Card>
+          <MediaFields form={form} project={project} onCoverBusy={setCoverBusy} onGalleryBusy={setGalleryBusy} />
         </TabPanel>
 
-        <FormActions saving={saving} dirty={isEdit ? isDirty : undefined} disabled={uploading} cancelTo="/projects" sticky />
+        <FormActions saving={saving} dirty={isEdit ? isDirty : undefined} disabled={uploading} cancelTo={listTo} sticky />
       </form>
 
       {isEdit && !isFormTab && isDirty ? <Alert tone="warning">{t.unsavedOnNested}</Alert> : null}

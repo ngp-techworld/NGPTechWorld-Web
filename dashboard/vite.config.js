@@ -33,6 +33,9 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: './src/test/setup.js',
       css: false,
+      // whole forms are filled in and saved in one test, and the suite runs its files in parallel: under that load a
+      // 4-second form test (offers, team) used to cross the 5-second default now and then
+      testTimeout: 15_000,
     },
   }
 })

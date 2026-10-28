@@ -1,4 +1,6 @@
 // Feature strings: { ar: {…}, en: {…} }. Generic words (save, cancel, delete, "Active"…) come from `useCommon()`.
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     title: 'العروض',
@@ -65,7 +67,7 @@ export default {
 
     sectionStatus: 'الحالة والرابط',
     slug: 'الرابط (Slug)',
-    slugHint: 'يظهر في رابط الصفحة: /offers/الرابط. اتركه فارغًا لتوليده تلقائيًا من العنوان الإنجليزي.',
+    slugHint: `يظهر في رابط الصفحة: ${ltr('/offers/')}الرابط. اتركه فارغًا لتوليده تلقائيًا من العنوان الإنجليزي.`,
     activeLabel: 'ظاهر في الموقع',
     activeHint: 'العروض المخفية لا تظهر في صفحة العروض ولا يمكن الحجز عليها.',
   },

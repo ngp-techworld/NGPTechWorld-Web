@@ -174,3 +174,132 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByText('home page')).toBeInTheDocument())
   })
 })
+
+describe('LoginPage — two-step sign-in', () => {
+  const challenge = 'c'.repeat(64)
+  const mfaLogin = (extra = {}) =>
+    mockApi({
+      'POST /auth/login': () => ({ data: { mfa_required: true, challenge, expires_in: 300 } }),
+      'POST /auth/login/mfa': ({ body }) => (body.code === '123456' || body.code === 'ABCD-EFGH' ? { data: { token: 'mfa-token', user: admin } } : validationError({ code: ['The code is not valid.'] })),
+      'GET /auth/me': () => ({ data: { ...admin, mfa_enabled: true, mfa_required: true } }),
+      ...extra,
+    })
+  const codeField = () => screen.getByLabelText(/^Verification code/)
+
+  it('asks for the code after the password, signs in with it and reads auth/me', async () => {
+    const server = mfaLogin()
+    const user = renderLogin()
+
+    await fill(user)
+    await submit(user)
+
+    expect(await screen.findByRole('heading', { name: 'Two-step sign-in' })).toBeInTheDocument()
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull() // no token before the code
+    await user.type(codeField(), '123 456')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+
+    expect(await screen.findByText('home page')).toBeInTheDocument()
+    expect(server.calls('POST', '/auth/login/mfa')[0].body).toEqual({ challenge, code: '123456' })
+    expect(server.calls('POST', '/auth/login/mfa')[0].headers.authorization).toBeUndefined()
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('mfa-token')
+    expect(server.calls('GET', '/auth/me')).toHaveLength(1)
+  })
+
+  it('checks the 6 digits locally, and lets a wrong code be retried', async () => {
+    const server = mfaLogin()
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+
+    await user.type(codeField(), '12a')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(screen.getByText('The code has 6 digits')).toBeInTheDocument()
+    expect(server.calls('POST', '/auth/login/mfa')).toHaveLength(0)
+
+    await user.clear(codeField())
+    await user.type(codeField(), '000000')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(await screen.findByText('The code is wrong or was already used. Try the next one.')).toBeInTheDocument()
+
+    await user.type(codeField(), '123456')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(await screen.findByText('home page')).toBeInTheDocument()
+    expect(server.calls('POST', '/auth/login/mfa').map((call) => call.body.challenge)).toEqual([challenge, challenge]) // same challenge
+  })
+
+  it('accepts a recovery code instead', async () => {
+    const server = mfaLogin()
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+
+    await user.click(screen.getByRole('button', { name: 'Use a recovery code' }))
+    await user.type(screen.getByLabelText(/^Recovery code/), 'ABCD-EFGH')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+
+    expect(await screen.findByText('home page')).toBeInTheDocument()
+    expect(server.calls('POST', '/auth/login/mfa')[0].body.code).toBe('ABCD-EFGH')
+  })
+
+  it('sends the visitor back to the password after five wrong codes, keeping the email', async () => {
+    mfaLogin({ 'POST /auth/login/mfa': () => validationError({ challenge: ['Too many wrong codes. Sign in again.'] }) })
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+
+    await user.type(codeField(), '999999')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+
+    expect(await screen.findByText('Too many wrong codes for this sign-in. Start again with your password.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Start over' }))
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/Email/)).toHaveValue('sara@ngptechworld.com')
+    expect(screen.getByLabelText(/^Password/)).toHaveValue('')
+  })
+
+  it('says when the sign-in expired, from the server or from its own clock', async () => {
+    mfaLogin({ 'POST /auth/login/mfa': () => validationError({ challenge: ['This sign-in has expired. Sign in again.'] }) })
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+    await user.type(codeField(), '123456')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(await screen.findByText('This sign-in has expired. Start again with your password.')).toBeInTheDocument()
+  })
+
+  it('ends the code step when the challenge lifetime runs out', async () => {
+    mfaLogin({ 'POST /auth/login': () => ({ data: { mfa_required: true, challenge, expires_in: 1 } }) })
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+
+    expect(await screen.findByText('This sign-in has expired. Start again with your password.', {}, { timeout: 3000 })).toBeInTheDocument()
+  })
+
+  it('shows how long to wait when the codes are throttled (429)', async () => {
+    mfaLogin({ 'POST /auth/login/mfa': () => reply(429, { message: 'Too Many Attempts.' }, { 'Retry-After': '120' }) })
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+    await screen.findByRole('heading', { name: 'Two-step sign-in' })
+    await user.type(codeField(), '123456')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(await screen.findByText('Too many attempts. Try again in 120 seconds.')).toBeInTheDocument()
+  })
+
+  it('signs an account without two-step sign-in in exactly as before, then reads auth/me', async () => {
+    const server = mockApi({ 'POST /auth/login': () => ({ data: { token: 'abc', user: admin } }), 'GET /auth/me': () => ({ data: { ...admin, mfa_enabled: false, mfa_required: false } }) })
+    const user = renderLogin()
+    await fill(user)
+    await submit(user)
+
+    expect(await screen.findByText('home page')).toBeInTheDocument()
+    expect(server.calls('POST', '/auth/login/mfa')).toHaveLength(0)
+    expect(server.calls('GET', '/auth/me')).toHaveLength(1)
+  })
+})

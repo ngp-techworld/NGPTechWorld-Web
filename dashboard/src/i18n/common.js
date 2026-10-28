@@ -1,5 +1,7 @@
 // Shared strings used by the kit and by every feature (`useCommon()`).
 // Values may be functions for parameterised text. Keys must exist in BOTH languages.
+import { ltr } from '@/lib/bidi'
+
 export default {
   ar: {
     appName: 'NGP TechWorld',
@@ -78,7 +80,7 @@ export default {
     maxLength: (n) => `الحد الأقصى ${n} حرفًا`,
     minLength: (n) => `الحد الأدنى ${n} أحرف`,
     invalidEmail: 'بريد إلكتروني غير صالح',
-    invalidUrl: 'رابط غير صالح (يجب أن يبدأ بـ http:// أو https://)',
+    invalidUrl: `رابط غير صالح (يجب أن يبدأ بـ ${ltr('http://')} أو ${ltr('https://')})`,
     launchNeedsDate: 'حدّد موعد الافتتاح حتى يعمل العدّ التنازلي.',
     invalidMonth: 'اختر شهرًا صالحًا',
     invalidNumber: 'أدخل رقمًا صالحًا',
@@ -89,6 +91,7 @@ export default {
     networkError: 'تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.',
     serverError: 'حدث خطأ في الخادم. حاول لاحقًا.',
     forbidden: 'ليست لديك صلاحية لتنفيذ هذا الإجراء.',
+    mfaRequired: 'فعّل التحقق بخطوتين من صفحة حسابك لفتح هذا الجزء من سجل المشاريع.',
     notFound: 'العنصر غير موجود.',
     validationFailed: 'يرجى تصحيح الحقول المظللة.',
     tooManyRequests: 'محاولات كثيرة. حاول لاحقًا.',
@@ -96,6 +99,14 @@ export default {
     errorBoundaryHint: 'حدث خطأ أثناء عرض هذه الصفحة. يمكنك المحاولة مرة أخرى أو إعادة تحميلها.',
     loadFailed: 'تعذّر تحميل البيانات.',
     itemNotFound: 'لم يتم العثور على هذا العنصر.',
+    unreadableResponse: 'قبل الخادم الطلب لكن تعذّرت قراءة ردّه، فربما حُفظ التغيير. تحقّق من النتيجة قبل أن تعيد المحاولة.',
+    unreadableData: 'تعذّرت قراءة ردّ الخادم. أعد المحاولة بعد قليل.',
+
+    // unsaved changes (UnsavedChangesGuard)
+    unsavedTitle: 'تغييرات غير محفوظة',
+    unsavedMessage: 'في هذه الصفحة تغييرات لم تُحفظ بعد، وستضيع إن غادرتها.',
+    unsavedLeave: 'المغادرة دون حفظ',
+    unsavedStay: 'البقاء في الصفحة',
 
     // language
     language: 'اللغة',
@@ -234,6 +245,7 @@ export default {
     networkError: 'Cannot reach the server. Check your internet connection.',
     serverError: 'Server error. Please try again later.',
     forbidden: 'You are not allowed to do this.',
+    mfaRequired: 'Turn on two-step sign-in on your account page to open this part of the project registry.',
     notFound: 'Item not found.',
     validationFailed: 'Please fix the highlighted fields.',
     tooManyRequests: 'Too many attempts. Try again later.',
@@ -241,6 +253,13 @@ export default {
     errorBoundaryHint: 'An error occurred while showing this page. You can try again or reload it.',
     loadFailed: 'Could not load the data.',
     itemNotFound: 'This item could not be found.',
+    unreadableResponse: 'The server accepted the request but its answer could not be read, so the change may have been saved. Check the result before trying again.',
+    unreadableData: 'The server’s answer could not be read. Try again in a moment.',
+
+    unsavedTitle: 'Unsaved changes',
+    unsavedMessage: 'This page has changes that are not saved yet. They are lost if you leave.',
+    unsavedLeave: 'Leave without saving',
+    unsavedStay: 'Stay on the page',
 
     language: 'Language',
     arabic: 'Arabic',

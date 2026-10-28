@@ -20,6 +20,12 @@ export function paginated(rows, { page = 1, perPage = 15, total = rows.length } 
 /** Return `reply(422, { message, errors })` from a handler to answer with a specific status / body / headers. */
 export const reply = (status, body = null, headers = {}) => ({ __reply: true, status, body, headers })
 
+/**
+ * A raw (non-JSON) body: `replyText(201, '<b>Notice</b>: …{"data":{}}')` — e.g. a PHP notice printed in front of the
+ * JSON, which the api client must turn into an ApiError (`UNREADABLE_RESPONSE`) instead of hanging the caller.
+ */
+export const replyText = (status, text, headers = {}) => ({ __reply: true, status, raw: String(text), headers })
+
 /** 422 in Laravel's shape: validationError({ question_ar: ['The question ar field is required.'] }) */
 export const validationError = (errors, message = 'The given data was invalid.') => reply(422, { message, errors })
 
@@ -30,7 +36,7 @@ const paramNames = (pattern) => [...pattern.matchAll(/:([A-Za-z_]+)/g)].map((mat
  * Replaces `fetch` with a fake Laravel admin API. Keys are 'METHOD /path' relative to /api/admin, `:param`
  * segments are captured. A handler receives `{ method, path, params, query, body, headers, url }` and returns:
  *   - a plain value  → 200 JSON of that value       - null / undefined → 204 No Content
- *   - reply(status, body, headers) → any status (errors, 201…)
+ *   - reply(status, body, headers) → any status (errors, 201…); replyText(status, text) → a raw, non-JSON body
  *   - a function is also accepted for a key to be re-defined later with `api.on(key, handler)`.
  * Unmatched requests answer 404 JSON and are listed in `api.unmatched`.
  *
@@ -88,6 +94,9 @@ export function mockApi(routes = {}) {
     const params = Object.fromEntries(entry.names.map((name, index) => [name, decodeURIComponent(match[index + 1])]))
     const result = typeof entry.handler === 'function' ? await entry.handler({ ...record, params }) : entry.handler
 
+    if (result && result.__reply && 'raw' in result) {
+      return new Response(result.raw, { status: result.status, headers: { 'Content-Type': 'text/html; charset=UTF-8', ...result.headers } })
+    }
     if (result && result.__reply) {
       const status = result.status
       const noBody = status === 204 || result.body === null
