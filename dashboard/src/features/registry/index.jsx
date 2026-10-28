@@ -2,6 +2,8 @@ import { lazy } from 'react'
 import { Boxes } from 'lucide-react'
 import ProjectCreate from '@/features/projects/ProjectCreate'
 import ProjectEdit from '@/features/projects/ProjectEdit'
+// the read-only dossier of one project (ملف المشروع), for whoever may view the project
+import { ProjectProfilePage } from './profile/lazy'
 
 // loaded on first visit (the layout wraps every routed page in <Suspense>)
 const RegistryOverview = lazy(() => import('./RegistryOverview'))
@@ -18,5 +20,6 @@ export default {
     { path: 'registry/projects', element: <RegistryProjectList /> },
     { path: 'projects/new', element: <ProjectCreate /> },
     { path: 'projects/:id', element: <ProjectEdit /> },
+    { path: 'projects/:id/profile', element: <ProjectProfilePage /> },
   ],
 }

@@ -31,7 +31,7 @@ import { Badge, Switch } from '@/ui'
 // { t (registry tab strings), r (registry kit strings), c (common), f (useFormat), pickField }.
 // Field rules mirror the backend controllers (app/Http/Controllers/Admin/Registry/*Controller.php).
 
-const TONES = {
+export const TONES = {
   featureStatus: { verified: 'success', implemented_not_tested: 'info', partially_implemented: 'warning', planned: 'neutral', unknown: 'neutral' },
   usage: { active: 'success', dev_only: 'info', unused: 'neutral', unknown: 'neutral' },
   recordStatus: { open: 'warning', in_progress: 'info', done: 'success' },

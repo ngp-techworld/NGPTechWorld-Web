@@ -16,7 +16,7 @@ describe('projects feature', () => {
   it('registers itself as the Projects menu entry with the three routes', () => {
     expect(feature.id).toBe('projects')
     expect(feature.nav).toMatchObject({ order: 30, group: 'content', to: '/projects', label: { ar: 'المشاريع', en: 'Projects' } })
-    expect(feature.routes.map((route) => route.path)).toEqual(['projects', 'projects/new', 'projects/:id'])
+    expect(feature.routes.map((route) => route.path)).toEqual(['projects', 'projects/new', 'projects/:id', 'projects/:id/profile'])
   })
 
   it('walks the whole flow: list → new → save → Team tab of the saved project → add a member → back to the list', async () => {
