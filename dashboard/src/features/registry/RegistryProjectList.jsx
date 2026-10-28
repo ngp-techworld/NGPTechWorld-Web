@@ -70,9 +70,9 @@ function ProjectCards({ rows, loading, busy, emptyTitle, emptyDescription }) {
               aria-label={ps.profileOf(name)}
               className={cx('group flex h-full flex-col overflow-hidden rounded-card border border-white/[.08] bg-white/[.03] shadow-card transition-colors hover:border-accent-light/50', focusRing)}
             >
-              <span className="relative block aspect-[16/9] bg-white/[.04]">
+              <span className="relative block aspect-[16/9] overflow-hidden bg-white/[.04]">
                 {row.cover_image_url ? (
-                  <img src={row.cover_image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  <img src={row.cover_image_url} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-top" />
                 ) : (
                   <span aria-hidden="true" className="flex h-full w-full items-center justify-center text-3xl font-extrabold text-accent-lighter/60">
                     {name.trim().charAt(0).toUpperCase() || '?'}
