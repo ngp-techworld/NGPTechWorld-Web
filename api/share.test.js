@@ -32,12 +32,15 @@ const PROJECT = {
 }
 
 /** Stand in for both the shell fetch and the API call. */
-function mockFetch({ member = null, project = null, content = null, projects = null } = {}) {
+function mockFetch({ member = null, project = null, content = null, projects = null, team = null } = {}) {
   vi.stubGlobal('fetch', vi.fn(async (url) => {
     const href = String(url)
     if (href.endsWith('/index.html')) return { ok: true, text: async () => SHELL }
     if (href.endsWith('/projects')) {
       return projects ? { ok: true, json: async () => ({ data: projects }) } : { ok: false }
+    }
+    if (href.endsWith('/team')) {
+      return team ? { ok: true, json: async () => ({ data: team }) } : { ok: false }
     }
     if (href.includes('/team/')) {
       return member ? { ok: true, json: async () => ({ data: member }) } : { ok: false }
@@ -351,5 +354,79 @@ describe('line separators in content', () => {
     expect(script).not.toMatch(/[\u2028\u2029]/)
     expect(script).toContain('\\' + 'u2028') // written as the six characters \u2028
     expect(JSON.parse(script).name).toBe(name)
+  })
+})
+
+describe('the crawlable links in the body', () => {
+  const PROJECTS = [
+    { slug: 'magiacard', name_ar: 'ماجيا كارد', name_en: 'MagiaCard' },
+    { slug: 'dawri', name_ar: 'دوري', name_en: 'Dawri' },
+  ]
+
+  it('gives every page a route out of itself', async () => {
+    // Without this the body is `<div id="app"></div>` and a crawler's first pass finds no link
+    // at all — the one thing that tells it which pages are worth fetching soon.
+    mockFetch({})
+    const res = makeResponse()
+    await handler(request('type=page&slug=about'), res)
+
+    expect(res.body).toContain('<noscript>')
+    expect(res.body).toContain('href="/portfolio"')
+    expect(res.body).toContain('href="/contact"')
+  })
+
+  it('lists every project on the portfolio page', async () => {
+    mockFetch({ projects: PROJECTS })
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body).toContain('href="/portfolio/magiacard"')
+    expect(res.body).toContain('href="/portfolio/dawri"')
+    expect(res.body).toContain('ماجيا كارد')
+  })
+
+  it('lists every member on the team page', async () => {
+    mockFetch({ team: [{ slug: 'sara-ahmad', name_ar: 'سارة أحمد', name_en: 'Sara Ahmad' }] })
+    const res = makeResponse()
+    await handler(request('type=page&slug=team'), res)
+
+    expect(res.body).toContain('href="/team/sara-ahmad"')
+    expect(res.body).toContain('سارة أحمد')
+  })
+
+  it('puts them after the root element, never inside it', async () => {
+    // React replaces everything in #app on boot; anything placed inside would be gone.
+    mockFetch({ projects: PROJECTS })
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body).toContain('<div id="app"></div>')
+    expect(res.body.indexOf('<noscript>')).toBeGreaterThan(res.body.indexOf('<div id="app"></div>'))
+  })
+
+  it('still links the site when the project list cannot be had', async () => {
+    mockFetch({})
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body).toContain('href="/services"')
+    expect(res.body).not.toContain('href="/portfolio/')
+  })
+
+  it('escapes a name so it cannot break out of the markup', async () => {
+    mockFetch({ projects: [{ slug: 'x', name_ar: '<script>alert(1)</script>', name_en: 'X' }] })
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body).toContain('&lt;script&gt;')
+    expect(res.body).not.toContain('<script>alert(1)</script>')
+  })
+
+  it('leaves the app booting', async () => {
+    mockFetch({ projects: PROJECTS })
+    const res = makeResponse()
+    await handler(request('type=page&slug=portfolio'), res)
+
+    expect(res.body).toContain('/assets/index-abc123.js')
   })
 })

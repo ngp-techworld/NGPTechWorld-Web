@@ -259,6 +259,55 @@ async function describeProject(slug, url) {
   })
 }
 
+/**
+ * A real, crawlable set of links for the body.
+ *
+ * Everything above this rewrites the <head>. The body is still `<div id="app"></div>` — 41 bytes
+ * with not one <a href> in it — so a crawler's first pass over any page of this site finds no
+ * route out of it at all. The sitemap lists the URLs, but it is links that say which pages matter
+ * and ought to be fetched soon, and a five-week-old site has none of that signal to spend.
+ *
+ * It goes in a <noscript>, which is what that element is for: a visitor without JavaScript gets a
+ * usable index of the site instead of an empty page, and it is the same set of links the rendered
+ * page offers rather than a second version written for crawlers. It sits outside #app, so React
+ * mounting over the root never removes it.
+ */
+const SITE_PAGES = [
+  ['/', 'الرئيسية'],
+  ['/services', 'الخدمات'],
+  ['/portfolio', 'معرض الأعمال'],
+  ['/team', 'فريقنا'],
+  ['/about', 'من نحن'],
+  ['/contact', 'تواصل معنا'],
+]
+
+const linkList = (items) =>
+  items.map(([href, label]) => `<li><a href="${esc(href)}">${esc(label)}</a></li>`).join('')
+
+async function crawlableLinks(type, slug) {
+  let section = ''
+
+  try {
+    if (type === 'page' && slug === 'portfolio') {
+      const projects = await fetchJson('/projects')
+      const links = (projects ?? [])
+        .filter((p) => p?.slug)
+        .map((p) => [`/portfolio/${encodeURIComponent(p.slug)}`, pick(p, 'name') || p.slug])
+      if (links.length) section = `<h2>معرض الأعمال</h2><ul>${linkList(links)}</ul>`
+    } else if (type === 'page' && slug === 'team') {
+      const team = await fetchJson('/team')
+      const links = (team ?? [])
+        .filter((m) => m?.slug)
+        .map((m) => [`/team/${encodeURIComponent(m.slug)}`, pick(m, 'name') || m.slug])
+      if (links.length) section = `<h2>فريقنا</h2><ul>${linkList(links)}</ul>`
+    }
+  } catch {
+    // The site's own pages are still worth linking even when the API is down.
+  }
+
+  return `<noscript><nav aria-label="NGP TechWorld"><ul>${linkList(SITE_PAGES)}</ul>${section}</nav></noscript>`
+}
+
 export default async function handler(request, response) {
   const { searchParams, origin } = new URL(request.url, `https://${request.headers.host}`)
   const type = searchParams.get('type')
@@ -285,9 +334,14 @@ export default async function handler(request, response) {
   // A function, not a string, as the replacement: in a string `replace` expands $` $' $& and $$, so a
   // project named "Shop $' end" would paste the rest of the shell into the head. A function's return
   // value is inserted as it is.
-  const html = replacement
+  let html = replacement
     ? shell.replace(/<!--og-->[\s\S]*?<!--\/og-->/, () => `<!--og-->\n${replacement}\n    <!--/og-->`)
     : shell
+
+  // After the root element, never inside it: React replaces whatever #app contains on boot.
+  const links = await crawlableLinks(type, slug).catch(() => '')
+  if (links) html = html.replace('<div id="app"></div>', () => `<div id="app"></div>
+    ${links}`)
 
   response.setHeader('Content-Type', 'text/html; charset=utf-8')
   // Cached at the edge so a popular link is not one API round trip per crawler, and served stale
